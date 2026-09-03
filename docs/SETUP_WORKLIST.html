@@ -1,0 +1,1140 @@
+<title>Quoting System Setup Worklist</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* Drawing-office palette: cool blue-grey film, ink, copper electrode. */
+  :root {
+    --paper:      #e7ecef;
+    --surface:    #f8fafb;
+    --surface-2:  #eef2f4;
+    --ink:        #151b21;
+    --ink-soft:   #4a565f;
+    --ink-faint:  #7b8892;
+    --rule:       #c9d3d9;
+    --rule-soft:  #dde4e8;
+
+    --copper:     #9a5528;
+    --copper-lit: #b8683a;
+
+    --blocker:    #9e2b20;
+    --blocker-bg: #f7e4e1;
+    --golive:     #7a5a10;
+    --golive-bg:  #f8eeda;
+    --later:      #3c5a6b;
+    --later-bg:   #e3ebef;
+    --done:       #1d5e42;
+    --done-bg:    #ddece5;
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #10151a;
+      --surface:    #171d23;
+      --surface-2:  #1e262d;
+      --ink:        #e4eaee;
+      --ink-soft:   #a9b6bf;
+      --ink-faint:  #78868f;
+      --rule:       #2e3941;
+      --rule-soft:  #242d34;
+
+      --copper:     #d2854f;
+      --copper-lit: #e39c68;
+
+      --blocker:    #e88478;
+      --blocker-bg: #3a1e1a;
+      --golive:     #d8ac57;
+      --golive-bg:  #33290f;
+      --later:      #9fc0d1;
+      --later-bg:   #1c2830;
+      --done:       #77c9a2;
+      --done-bg:    #142b21;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #10151a;
+    --surface:    #171d23;
+    --surface-2:  #1e262d;
+    --ink:        #e4eaee;
+    --ink-soft:   #a9b6bf;
+    --ink-faint:  #78868f;
+    --rule:       #2e3941;
+    --rule-soft:  #242d34;
+
+    --copper:     #d2854f;
+    --copper-lit: #e39c68;
+
+    --blocker:    #e88478;
+    --blocker-bg: #3a1e1a;
+    --golive:     #d8ac57;
+    --golive-bg:  #33290f;
+    --later:      #9fc0d1;
+    --later-bg:   #1c2830;
+    --done:       #77c9a2;
+    --done-bg:    #142b21;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 40px 0 22px;
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(30px, 4.6vw, 46px);
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0;
+  }
+
+  /* ---------- typography ---------- */
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 23px;
+    letter-spacing: -.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    margin: 0 0 6px;
+    letter-spacing: -.005em;
+  }
+  p { margin: 0 0 12px; max-width: 70ch; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--copper); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--copper); outline-offset: 3px; border-radius: 2px;
+  }
+  code, .mono { font-family: var(--font-mono); font-size: .88em; }
+  code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--rule-soft);
+  }
+  strong { font-weight: 600; }
+
+  /* ---------- section headers ---------- */
+  section { margin-bottom: 46px; scroll-margin-top: 20px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 9px;
+    margin-bottom: 22px;
+  }
+  .section-mark {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--copper);
+    letter-spacing: .06em;
+    flex: none;
+  }
+  .section-note {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--ink-faint);
+    flex: none;
+  }
+
+  /* ---------- contents ---------- */
+  .contents {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 20px 24px;
+    margin-bottom: 40px;
+  }
+  .contents h2 { font-size: 15px; margin-bottom: 12px; }
+  .contents ol {
+    margin: 0; padding: 0; list-style: none;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 4px 26px;
+  }
+  .contents li {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 3px 0; border-bottom: 1px solid var(--rule-soft);
+  }
+  .contents .mark { font-family: var(--font-mono); font-size: 12px; color: var(--copper); }
+  .contents a { text-decoration: none; color: var(--ink); font-size: 14.5px; }
+  .contents a:hover { text-decoration: underline; }
+
+  /* ---------- items ---------- */
+  .items { display: flex; flex-direction: column; gap: 2px; }
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--rule);
+    padding: 16px 20px;
+  }
+  .item.is-blocker { border-left-color: var(--blocker); }
+  .item.is-golive  { border-left-color: var(--golive); }
+  .item.is-later   { border-left-color: var(--later); }
+  .item.is-done    { border-left-color: var(--done); }
+
+  .item-head {
+    display: flex; align-items: baseline; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 8px;
+  }
+  .item-head h3 { margin: 0; }
+
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex: none;
+  }
+  .pill-blocker { background: var(--blocker-bg); color: var(--blocker); }
+  .pill-golive  { background: var(--golive-bg);  color: var(--golive); }
+  .pill-later   { background: var(--later-bg);   color: var(--later); }
+  .pill-done    { background: var(--done-bg);    color: var(--done); }
+  .pill-mine    { background: var(--surface-2);  color: var(--ink-faint); border: 1px solid var(--rule); }
+
+  .item p { font-size: 15px; color: var(--ink-soft); }
+  .item p strong { color: var(--ink); }
+
+  .send {
+    margin-top: 12px;
+    background: var(--surface-2);
+    border-left: 2px solid var(--copper);
+    padding: 10px 14px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink);
+    overflow-x: auto;
+  }
+  .send-label {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 5px;
+  }
+  .send ul { margin: 0; padding-left: 18px; }
+  .send li { margin-bottom: 2px; }
+
+  /* ---------- start-here callout ---------- */
+  .start {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 26px 30px;
+    margin-bottom: 40px;
+  }
+  .start h2 { color: #fff; font-size: 19px; margin-bottom: 6px; }
+  .start > p { color: #b9c5cd; font-size: 15px; max-width: 68ch; }
+  .start ol {
+    margin: 18px 0 0; padding: 0; list-style: none;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+  }
+  .start li { border-top: 2px solid var(--copper-lit); padding-top: 12px; }
+  .start .n {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+    color: var(--copper-lit); display: block; margin-bottom: 5px;
+  }
+  .start .t {
+    font-family: var(--font-display); font-weight: 600; font-size: 16px;
+    color: #fff; display: block; margin-bottom: 5px;
+  }
+  .start .d { font-size: 14px; color: #b9c5cd; line-height: 1.5; }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 480px; }
+  th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 10.5px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.fill {
+    font-family: var(--font-mono);
+    color: var(--ink-faint);
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+
+  /* ---------- questions ---------- */
+  .q {
+    border-top: 1px solid var(--rule);
+    padding: 14px 0;
+  }
+  .q:last-child { border-bottom: 1px solid var(--rule); }
+  .q h3 { margin-bottom: 4px; }
+  .q p { font-size: 14.5px; color: var(--ink-soft); margin: 0; }
+
+  /* ---------- footer ---------- */
+  footer {
+    border-top: 2px solid var(--ink);
+    padding-top: 18px;
+    font-size: 14px;
+    color: var(--ink-faint);
+  }
+  footer p { max-width: 72ch; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 18px 64px; }
+    .section-note { display: none; }
+    .item { padding: 14px 16px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">EDM Zone · Quoting automation</p>
+    <h1>What I need from you to make this quote for real</h1>
+    <p class="standfirst">
+      The system is built and running on invented placeholder figures. Everything below
+      is what has to come from the business before it can price a real enquiry — plus the
+      decisions only you can make, and the build work still on my side so you don't
+      duplicate it.
+    </p>
+  </header>
+
+  <div class="start">
+    <h2>Three things unblock everything else</h2>
+    <p>
+      Nothing prices without rates, nothing arrives without the mailbox, and nothing should
+      be trusted until extraction has been scored against drawings you already know the
+      answer to. Different people can do all three at once — they don't queue behind each
+      other.
+    </p>
+    <ol>
+      <li>
+        <span class="n">You, commercially</span>
+        <span class="t">Your real hourly rates</span>
+        <span class="d">
+          Seven processes, one rate each. There is no default rate anywhere in the code —
+          a process without a rate refuses to price rather than guessing.
+        </span>
+      </li>
+      <li>
+        <span class="n">Your M365 admin</span>
+        <span class="t">The shared quoting mailbox</span>
+        <span class="d">
+          Plus an Entra ID app registration so I can read it. Until this exists, enquiries
+          have to be created by hand.
+        </span>
+      </li>
+      <li>
+        <span class="n">You, from the files</span>
+        <span class="t">20–30 already-quoted drawings</span>
+        <span class="d">
+          With what you actually quoted. Scoring the AI against these before we build
+          further is the single measurement that says whether this saves you time or just
+          gives you something new to check.
+        </span>
+      </li>
+    </ol>
+  </div>
+
+  <nav class="contents" aria-label="Contents">
+    <h2>On this page</h2>
+    <ol>
+      <li><span class="mark">A</span><a href="#mailbox">Outlook and the email tag</a></li>
+      <li><span class="mark">B</span><a href="#rates">Rates for each operation</a></li>
+      <li><span class="mark">C</span><a href="#rules">Adjustment rules</a></li>
+      <li><span class="mark">D</span><a href="#material">Material and stock</a></li>
+      <li><span class="mark">E</span><a href="#customers">Customers</a></li>
+      <li><span class="mark">F</span><a href="#history">Historic quotations</a></li>
+      <li><span class="mark">G</span><a href="#calculators">Your EDM calculators</a></li>
+      <li><span class="mark">H</span><a href="#knowledge">Industry knowledge loop</a></li>
+      <li><span class="mark">I</span><a href="#build">Build work on my side</a></li>
+      <li><span class="mark">J</span><a href="#staff">Getting staff onto it</a></li>
+      <li><span class="mark">K</span><a href="#emax">EMAX ERP, later</a></li>
+      <li><span class="mark">?</span><a href="#questions">Decisions I need from you</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============ A ============ -->
+  <section id="mailbox">
+    <div class="section-head">
+      <span class="section-mark">A</span>
+      <h2>Outlook and the email tag</h2>
+      <span class="section-note">Your IT / M365 admin</span>
+    </div>
+
+    <div class="items">
+
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>The tag to put on RFQ emails</h3>
+          <span class="pill pill-blocker">Blocks intake</span>
+        </div>
+        <p>
+          You asked what to tag them with. The answer is an <strong>Outlook Category</strong>
+          — the coloured labels — applied to the message inside the shared quoting mailbox.
+          The app watches that mailbox and only picks up mail carrying the category it has
+          been told to look for. Right now that is the word <code>RFQ</code>, and it must
+          match exactly, capitals included.
+        </p>
+        <p>
+          Create the category once in the shared mailbox's category list so everyone picks
+          the same one from the menu rather than typing it. If you would rather use a
+          different word, tell me and I will change the setting — it is one line of config,
+          not a code change.
+        </p>
+        <p>
+          If your staff would find <em>dragging into a folder</em> more natural than
+          categorising, say so. Watching a folder instead is a small change and I would
+          rather fit how people already work than train them out of it.
+        </p>
+      </div>
+
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>The shared mailbox itself</h3>
+          <span class="pill pill-blocker">Blocks intake</span>
+        </div>
+        <p>
+          One mailbox that RFQs land in or get forwarded to. A shared mailbox is better than
+          a personal one: it survives people leaving, and the permissions are cleaner.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me</span>
+          The mailbox address, e.g. <code>quotes@edmzone.co.uk</code>
+        </div>
+      </div>
+
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>Entra ID app registration</h3>
+          <span class="pill pill-blocker">Blocks intake</span>
+        </div>
+        <p>
+          This is how the app authenticates to Microsoft Graph to read the mailbox and
+          create draft replies. Your M365 admin creates it in the Azure portal under
+          <em>Entra ID → App registrations</em>. It needs application permissions, granted
+          with admin consent.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me (a secret — use a password manager or a call, not email)</span>
+          <ul>
+            <li>Directory (tenant) ID</li>
+            <li>Application (client) ID</li>
+            <li>Client secret value <em>and its expiry date</em></li>
+          </ul>
+        </div>
+        <div class="send">
+          <span class="send-label">Ask your admin to grant</span>
+          <ul>
+            <li><code>Mail.Read</code> — application, to read the mailbox</li>
+            <li><code>Mail.ReadWrite</code> — application, to create the draft reply</li>
+            <li>No Mail.Send. The app deliberately cannot send anything.</li>
+          </ul>
+        </div>
+        <p>
+          Those permissions cover <em>every</em> mailbox in the tenant by default, which is
+          more than this needs. Ask your admin to add an
+          <strong>Application Access Policy</strong> scoping it to the quoting mailbox
+          alone. It takes them five minutes and it means a mistake here cannot read the
+          whole company's mail.
+        </p>
+      </div>
+
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>A public HTTPS address for the webhook</h3>
+          <span class="pill pill-golive">Needed for live intake</span>
+        </div>
+        <p>
+          Microsoft pushes a notification when tagged mail arrives, so it needs somewhere to
+          push to. That comes with hosting — see <a href="#staff">section J</a>. Until then
+          I can poll the mailbox on a timer instead, which is the same thing a minute later
+          and needs no inbound address.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section id="rates">
+    <div class="section-head">
+      <span class="section-mark">B</span>
+      <h2>Rates for each operation</h2>
+      <span class="section-note">You</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>One hourly rate per process</h3>
+          <span class="pill pill-blocker">Blocks pricing</span>
+        </div>
+        <p>
+          Fill in the right-hand column. These go into the rates screen, not into the code —
+          changing a rate later is you typing a number, no developer and no deployment.
+          Old rates are kept and end-dated, so a quote you sent last month stays explicable.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Process</th>
+                <th scope="col">What it covers</th>
+                <th scope="col" class="num">Your rate £/h</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>spark_erode</code></td><td>Sinker / die-sink EDM</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>wire_edm</code></td><td>Wire erosion</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>cnc_mill</code></td><td>Milling and machining centres</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>cnc_turn</code></td><td>Turning</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>grind</code></td><td>Surface / cylindrical grinding</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>manual</code></td><td>Bench, fitting, deburr, manual machines</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>qc</code></td><td>Inspection and reporting</td><td class="fill num">£ ______</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">
+          <strong>Do any of these differ by machine?</strong> If your large wire machine
+          bills differently from the small one, or 5-axis differs from 3-axis, say so — the
+          rate table already supports a machine group per rate and I will split them. If one
+          rate per process is how you actually quote, leave it simple.
+        </p>
+      </div>
+
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Subcontract work</h3>
+          <span class="pill pill-golive">Needed for go-live</span>
+        </div>
+        <p>
+          Heat treatment, plating, coating and anything else bought out is priced per unit
+          rather than per hour, and typed in per job. Nothing to set up in advance — but
+          tell me the operations you routinely buy out so the routing suggestions include
+          them instead of quietly leaving them off a quote.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section id="rules">
+    <div class="section-head">
+      <span class="section-mark">C</span>
+      <h2>Adjustment rules</h2>
+      <span class="section-note">You, with the commercial hat on</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>The percentages the system is allowed to apply</h3>
+          <span class="pill pill-blocker">Blocks pricing</span>
+        </div>
+        <p>
+          This is the mechanism that stops the AI inventing a number. It can only ever apply
+          a percentage that exists in this table, cited by name. If you write a note saying
+          "add some contingency" and no matching rule exists, it <strong>asks you</strong>
+          rather than picking something that seems about right.
+        </p>
+        <p>
+          Each rule needs a plain-English trigger and a number. Three are already scaffolded
+          with invented values — replace them:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Rule</th>
+                <th scope="col">When it applies — your words</th>
+                <th scope="col" class="num">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>min_quote_value</code></td>
+                <td>The floor below which you will not quote at all</td>
+                <td class="fill num">£ ______</td>
+              </tr>
+              <tr>
+                <td><code>rush_uplift</code></td>
+                <td class="fill">how many days counts as rush? ______</td>
+                <td class="fill num">____ %</td>
+              </tr>
+              <tr>
+                <td><code>difficult_job_contingency</code></td>
+                <td class="fill">what makes a job "difficult"? ______</td>
+                <td class="fill num">____ %</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">
+          <strong>What else do you routinely add?</strong> Programming charge, first-off
+          inspection, carriage, a minimum line value, a new-customer margin, a long-standing
+          customer discount. Anything you find yourself adding by habit should be a rule, so
+          it gets applied consistently and shows on the quote as its own line.
+        </p>
+      </div>
+
+      <div class="item is-later">
+        <div class="item-head">
+          <h3>Rules only flag, never price</h3>
+          <span class="pill pill-later">Worth knowing</span>
+        </div>
+        <p>
+          A rule can be set to raise a flag for a human rather than change a number — useful
+          for "thin wall, go and look at this" cases where the response is judgement, not a
+          percentage. Tell me the ones you'd want and I'll set them up that way.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ D ============ -->
+  <section id="material">
+    <div class="section-head">
+      <span class="section-mark">D</span>
+      <h2>Material and stock</h2>
+      <span class="section-note">You / your buyer</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>The stock sizes you actually buy</h3>
+          <span class="pill pill-golive">Only for full-supply jobs</span>
+        </div>
+        <p>
+          For jobs where you supply the material, the system works out how many blanks come
+          out of a piece of stock and how many pieces to buy. That calculation is plain
+          arithmetic, not a judgement call — but it needs to know what you buy. If most of
+          your work is service-only on customer free-issue material, this can wait.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me — a spreadsheet is ideal, one row per size</span>
+          <ul>
+            <li>Material spec, exactly as you'd write it — <code>1.2312</code>, <code>EN24T</code></li>
+            <li>Form — plate, round bar, square bar, billet</li>
+            <li>Dimensions in mm (length × width × thickness, or length × diameter)</li>
+            <li>Cost per piece</li>
+            <li>Saw / grip allowance you leave around each blank</li>
+          </ul>
+        </div>
+        <p>
+          If a material has no stock listed, the system refuses to price it and flags it for
+          your buyer rather than inventing a material cost.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ E ============ -->
+  <section id="customers">
+    <div class="section-head">
+      <span class="section-mark">E</span>
+      <h2>Customers</h2>
+      <span class="section-note">You</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Your regulars and how you treat them</h3>
+          <span class="pill pill-golive">Needed for go-live</span>
+        </div>
+        <p>
+          Customers are matched to incoming mail by <strong>email domain</strong>, so an
+          enquiry from anyone at that company picks up their standing terms automatically.
+          Start with your top ten or twenty; the rest can be added as they come in.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me — one row per customer</span>
+          <ul>
+            <li>Company name</li>
+            <li>Email domain — <code>bracken-eng.co.uk</code>, no @</li>
+            <li>Your standard margin % for them</li>
+            <li>Standard lead time in days</li>
+            <li>Do they normally free-issue material? yes / no</li>
+            <li>Do they need certification as standard? yes / no</li>
+            <li>Anything an estimator should know — "always chases on delivery", "never
+              accepts a quote without a breakdown"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ F ============ -->
+  <section id="history">
+    <div class="section-head">
+      <span class="section-mark">F</span>
+      <h2>Historic quotations</h2>
+      <span class="section-note">Needs a decision from you first</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>The 20–30 scoring drawings</h3>
+          <span class="pill pill-blocker">Do this early</span>
+        </div>
+        <p>
+          Separate from the archive below, and more urgent. I need drawings you have
+          <em>already quoted</em>, together with what you concluded, so I can run extraction
+          over them and score it field by field: how often it read the material right, the
+          tolerance right, the quantity right — and, more importantly, how often it was
+          <strong>confidently wrong</strong>.
+        </p>
+        <p>
+          That number decides whether this project is worth continuing in its current shape.
+          It is cheap to measure now and expensive to discover later, which is why it sits
+          in the top three.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me — drawings plus, for each</span>
+          <ul>
+            <li>Material, heat treatment, tightest tolerance, overall size</li>
+            <li>Quantity quoted</li>
+            <li>The operations you routed it through, and the times you used</li>
+            <li>The price you quoted, and whether you won it</li>
+          </ul>
+        </div>
+        <p>
+          A spread is more useful than your twenty cleanest drawings. Include a couple of
+          bad scans and a hand-annotated one — I want to know where it fails, and a set of
+          perfect drawings will flatter it.
+        </p>
+      </div>
+
+      <div class="item is-later">
+        <div class="item-head">
+          <h3>Linking the scanned back catalogue</h3>
+          <span class="pill pill-later">Phase two — but decide the route now</span>
+        </div>
+        <p>
+          You asked how scanned historic quotes get linked in. Honest answer: the two
+          look-up lanes — "have we cut this shape before" and "has this kind of job hurt us
+          before" — search <em>structured rows</em>, not images. A scanned PDF sitting in a
+          folder cannot be matched on tolerance band or envelope. So the question is how we
+          get from paper to rows, and there are three routes:
+        </p>
+        <div class="send">
+          <span class="send-label">Route 1 — export, if your current system can</span>
+          If quotes live in a system that can export to CSV or Excel, this is by far the
+          best route. A few thousand rows imported in an afternoon, and the lanes start
+          working immediately.
+        </div>
+        <div class="send">
+          <span class="send-label">Route 2 — type in the ones that matter</span>
+          Not everything. The repeat parts and the jobs that went wrong are where the value
+          is; a one-off from 2019 you never saw again earns nothing. A hundred good rows
+          beat three thousand poor ones.
+        </div>
+        <div class="send">
+          <span class="send-label">Route 3 — OCR the scans</span>
+          Feasible, and the same vision pipeline that reads drawings can read a quote sheet.
+          But it is its own project with its own accuracy problem, and I would not start it
+          until the live system is earning its keep.
+        </div>
+        <p style="margin-top:14px">
+          <strong>Tell me what form the back catalogue is actually in</strong> and I will
+          tell you which of these is worth doing. Until then, note that the archive compounds
+          — it is thin at first and gets genuinely useful over months, so it is not a reason
+          to delay going live.
+        </p>
+      </div>
+
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Recording won and lost</h3>
+          <span class="pill pill-golive">Habit to start on day one</span>
+        </div>
+        <p>
+          When a quote comes back, someone marks it won or lost — and where you know it, the
+          time the job <em>actually</em> took. Without that the system knows what it quoted
+          but never whether it was right, and it cannot improve. It is two clicks and it is
+          the difference between an archive and a filing cabinet.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ G ============ -->
+  <section id="calculators">
+    <div class="section-head">
+      <span class="section-mark">G</span>
+      <h2>Your EDM Zone calculators</h2>
+      <span class="section-note">Send them over and I'll review</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Send me what you have, however rough</h3>
+          <span class="pill pill-golive">High value</span>
+        </div>
+        <p>
+          You said they are outdated but the principles hold. That is usually exactly right
+          with cycle-time calculators — the physics has not changed, the machines and the
+          consumables have. A calculator that is systematically 20% out is still far more
+          use than an AI guessing from a similar job, because it is wrong <em>consistently</em>
+          and can be corrected with one factor.
+        </p>
+        <p>
+          This matters more than it might sound. Every operation time in the system is
+          labelled by where it came from, and the workspace shows AI-estimated times
+          differently from calculated ones precisely so an estimator knows what to check.
+          The more times come from your calculators, the less checking anyone does.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me</span>
+          <ul>
+            <li>The spreadsheets or files themselves, formulas intact — not a screenshot</li>
+            <li>Which processes each one covers</li>
+            <li>Roughly when they were last trusted, and what changed since — machines,
+              wire, electrode material, speeds</li>
+            <li>Any you know are wrong, and which direction</li>
+          </ul>
+        </div>
+        <div class="send">
+          <span class="send-label">I'll come back with</span>
+          <ul>
+            <li>What still holds and what has drifted</li>
+            <li>Which inputs the app can fill in automatically from the drawing</li>
+            <li>What to wire in first for the biggest reduction in hand-entered times</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ H ============ -->
+  <section id="knowledge">
+    <div class="section-head">
+      <span class="section-mark">H</span>
+      <h2>Industry knowledge loop</h2>
+      <span class="section-note">You, ongoing</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Notes are how your judgement gets in</h3>
+          <span class="pill pill-golive">How it improves</span>
+        </div>
+        <p>
+          When an estimator types "we already have the electrode for this, drop 15 minutes",
+          the system turns that into a specific change to a specific operation, reprices from
+          the changed input, and stores the note with the price before and after. Every one
+          is a recorded example of judgement the AI could not reach alone.
+        </p>
+        <p>
+          Nothing is learned silently. When the same note keeps recurring, it appears on the
+          rules screen as a <em>candidate</em> — and a person decides whether it becomes a
+          standing rule. The system never promotes its own rules.
+        </p>
+        <div class="send">
+          <span class="send-label">Decide</span>
+          <ul>
+            <li>Who reviews the candidates — you, or a senior estimator?</li>
+            <li>How often — monthly is usually about right</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ I ============ -->
+  <section id="build">
+    <div class="section-head">
+      <span class="section-mark">I</span>
+      <h2>Build work on my side</h2>
+      <span class="section-note">Mine, not yours</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-done">
+        <div class="item-head">
+          <h3>The working lists you described</h3>
+          <span class="pill pill-mine">Mine</span>
+        </div>
+        <p>
+          You want tabs like <em>quote to check</em>, <em>ready to send</em>,
+          <em>awaiting feedback</em>. The states already exist underneath — what's missing
+          is naming them as tabs across the top of the queue. This is how I'd map them; tell
+          me if the names or the cuts are wrong, because these are your words for your
+          process, not mine:
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th scope="col">Tab</th><th scope="col">What lands in it</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Needs attention</strong></td><td>Something is blocking — a field it couldn't read, a missing rate, a drawing revision conflict</td></tr>
+              <tr><td><strong>To check</strong></td><td>Priced and waiting for an estimator to go through it</td></tr>
+              <tr><td><strong>Ready to send</strong></td><td>Approved, draft written, waiting for someone to press send in Outlook</td></tr>
+              <tr><td><strong>Awaiting feedback</strong></td><td>Sent, no answer from the customer yet</td></tr>
+              <tr><td><strong>Won / Lost</strong></td><td>Outcome recorded — this is what feeds the archive</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="item is-done">
+        <div class="item-head">
+          <h3>A refresh button for new enquiries</h3>
+          <span class="pill pill-mine">Mine</span>
+        </div>
+        <p>
+          Agreed, and it's a real gap — intake is currently push-only, so if a notification
+          is missed nothing tells you. I'll add a <em>Check for new enquiries</em> button
+          that pulls the mailbox on demand, plus a background poll so it also happens on its
+          own. That also means we can start without the public webhook address.
+        </p>
+      </div>
+
+      <div class="item is-done">
+        <div class="item-head">
+          <h3>Sending from the list</h3>
+          <span class="pill pill-mine">Mine</span>
+        </div>
+        <p>
+          The pieces exist — approving writes a draft into Outlook with the numbers pulled
+          straight from the record, and marking it sent freezes the quote and starts the
+          clock on the response. What's missing is the <em>Ready to send</em> view that
+          collects them so one person can work through the day's drafts in one place.
+        </p>
+        <p>
+          The draft is deliberately a draft. Nothing in this system can send an email, and I
+          would push back hard before changing that.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ J ============ -->
+  <section id="staff">
+    <div class="section-head">
+      <span class="section-mark">J</span>
+      <h2>Getting staff onto it</h2>
+      <span class="section-note">Needs a hosting decision</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>The preview link is not the app</h3>
+          <span class="pill pill-golive">Read this one</span>
+        </div>
+        <p>
+          I've sent you a link that shows the workspace with recorded data in it. It's the
+          real screens, and it's genuinely useful for showing people what's coming — but it
+          is a single page with no system behind it. Nothing you click changes anything, and
+          two people opening it do not see the same thing.
+        </p>
+        <p>
+          For staff to actually manage sending, the system has to run somewhere they can all
+          reach. That means:
+        </p>
+        <div class="send">
+          <span class="send-label">What hosting needs</span>
+          <ul>
+            <li>Somewhere to run the app — Azure App Service is the natural fit since
+              you're already on Microsoft</li>
+            <li>A proper database — Azure SQL or Postgres, not the local file it uses now</li>
+            <li>Storage for drawings — Azure Blob Storage</li>
+            <li><strong>Sign-in switched on</strong>, so approvals carry a real name</li>
+          </ul>
+        </div>
+        <p>
+          That last point is not optional. Right now the app trusts whoever it is told it
+          is, which is fine on one machine and unacceptable the moment more than one person
+          uses it — an approval has to record who actually approved it. It's a config flag
+          and some Entra setup, not a rebuild, but it must happen before anyone else logs in.
+        </p>
+        <div class="send">
+          <span class="send-label">Decide</span>
+          Who owns your Azure subscription, and are you comfortable running this in your own
+          tenant? If you'd rather not, say so and I'll set out the alternatives.
+        </div>
+      </div>
+
+      <div class="item is-later">
+        <div class="item-head">
+          <h3>The Outlook add-in</h3>
+          <span class="pill pill-later">After hosting</span>
+        </div>
+        <p>
+          There's a sidebar card built that shows, next to the email itself, what the quote
+          is doing — customer, parts, value, flag count, one link through to the full
+          workspace. It's read-only on purpose: enough to judge routine from
+          needs-attention without leaving the inbox. It needs the same hosting, and your
+          admin deploys it to whoever should see it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ K ============ -->
+  <section id="emax">
+    <div class="section-head">
+      <span class="section-mark">K</span>
+      <h2>EMAX ERP, later</h2>
+      <span class="section-note">Long game</span>
+    </div>
+
+    <div class="items">
+      <div class="item is-later">
+        <div class="item-head">
+          <h3>Already designed for, deliberately not built</h3>
+          <span class="pill pill-later">Phase three</span>
+        </div>
+        <p>
+          Your end goal — the quotation built in EMAX with the operations already there,
+          ready to send — is the right destination, and the system has been shaped for it
+          from the start. The operations list is kept in proper fields with a controlled list
+          of processes and real operation numbers, never free text, specifically so that the
+          same rows an admin retypes into EMAX today can be pushed into it automatically
+          later. That makes the ERP link a data feed, not a rebuild.
+        </p>
+        <p>
+          It's phase three because connecting to your ERP before the quoting itself is
+          trusted would mean automatically pushing numbers nobody has validated into the
+          system that runs your shop floor.
+        </p>
+        <div class="send">
+          <span class="send-label">When you're ready, find out</span>
+          <ul>
+            <li>Does EMAX have an API, or is it database or file import?</li>
+            <li>What a routing / operation record looks like in it — the fields it insists on</li>
+            <li>Who administers it, and whether your licence allows integration</li>
+            <li>Whether their support will talk to me directly</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ questions ============ -->
+  <section id="questions">
+    <div class="section-head">
+      <span class="section-mark">?</span>
+      <h2>Decisions I need from you</h2>
+      <span class="section-note">Nobody else can make these</span>
+    </div>
+
+    <div class="q">
+      <h3>May it suggest processes the customer didn't ask for?</h3>
+      <p>
+        If a customer says "sparking", the system quotes sparking and nothing else — that's
+        settled and I wouldn't change it. The open question is the other case: the customer
+        says nothing, and the drawing plainly needs milling before wire. Should it propose
+        the full routing, or only ever quote exactly what was asked? It currently proposes,
+        and marks the proposal clearly.
+      </p>
+    </div>
+
+    <div class="q">
+      <h3>How sure must it be before it shows you a value?</h3>
+      <p>
+        Every field it reads carries a confidence score, and below a threshold the value is
+        withheld and shown as unread rather than as a number. Too high and estimators retype
+        everything; too low and wrong values slip through. I've set sensible starting points
+        — material 85%, tolerance 90%, quantity 90% — but the honest answer is that we tune
+        these from the scoring exercise rather than guess now.
+      </p>
+    </div>
+
+    <div class="q">
+      <h3>Who is allowed to approve a quote?</h3>
+      <p>
+        Anyone who can log in, or a named few? Approval is the moment the system stops being
+        a draft and becomes a price you stand behind, and it's recorded with the person's
+        name against it.
+      </p>
+    </div>
+
+    <div class="q">
+      <h3>When a quote comes back for revision, new version or edit in place?</h3>
+      <p>
+        A sent quote is frozen and revising starts version 2, which keeps the history clean.
+        If you'd rather amend and resend under one number because that's what customers
+        expect, tell me — but I'd argue for keeping versions.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      <strong>Nothing here needs to happen at once.</strong> Rates, the mailbox and the
+      scoring drawings get you to a working system on real numbers. Everything else improves
+      it from there.
+    </p>
+    <p style="margin-top:10px">
+      Every figure currently in the system is an invented placeholder — the £38/h spark
+      erode, the margins, the stock costs, all of it. The seeding script refuses to run
+      against a production database for exactly that reason. Real rates come from you before
+      anything is quoted to a customer.
+    </p>
+  </footer>
+
+</div>

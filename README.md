@@ -8,6 +8,11 @@ sent reply, with everything logged.
 Built to [`QUOTING_APP_BUILD_SPEC.md`](docs/BUILD_SPEC.md). One backend serving
 two surfaces: an estimator web app and an Outlook triage add-in.
 
+**Setup worklist** — what the business has to supply, decide or switch on before
+this can price a real enquiry: [`docs/SETUP_WORKLIST.html`](docs/SETUP_WORKLIST.html)
+(open it in a browser). Rates, the shared mailbox and 20-30 already-quoted
+drawings for scoring are the three that block everything else.
+
 ---
 
 ## The rule everything else follows
