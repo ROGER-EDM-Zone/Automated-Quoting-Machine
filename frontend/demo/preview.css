@@ -1,0 +1,10 @@
+.preview-banner {
+  background: #1c2430;
+  color: #e8ecf1;
+  padding: 9px 24px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: background .2s ease;
+}
+.preview-banner strong { color: #fff; }
+.preview-banner.nudged { background: #7a4b00; }

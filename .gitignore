@@ -16,3 +16,4 @@ storage/
 *.egg-info/
 .coverage
 htmlcov/
+dist-demo/
