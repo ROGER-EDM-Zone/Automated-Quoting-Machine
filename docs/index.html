@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quoting Automation — project documents</title>
+
+<!--
+  Index of the project's documents.
+
+  Written as a standalone page rather than Markdown so that, with GitHub Pages
+  switched on for this repository, the documents render as pages instead of
+  showing as HTML source. See the note at the bottom for the one setting.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+
+<style>
+  /* Same drawing-office palette as the worklist, so the docs read as a set. */
+  :root {
+    --paper: #e7ecef;
+    --surface: #f8fafb;
+    --surface-2: #eef2f4;
+    --ink: #151b21;
+    --ink-soft: #4a565f;
+    --ink-faint: #7b8892;
+    --rule: #c9d3d9;
+    --rule-soft: #dde4e8;
+    --copper: #9a5528;
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10151a;
+      --surface: #171d23;
+      --surface-2: #1e262d;
+      --ink: #e4eaee;
+      --ink-soft: #a9b6bf;
+      --ink-faint: #78868f;
+      --rule: #2e3941;
+      --rule-soft: #242d34;
+      --copper: #d2854f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10151a;
+    --surface: #171d23;
+    --surface-2: #1e262d;
+    --ink: #e4eaee;
+    --ink-soft: #a9b6bf;
+    --ink-faint: #78868f;
+    --rule: #2e3941;
+    --rule-soft: #242d34;
+    --copper: #d2854f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 48px 28px 80px; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--copper); margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(28px, 5vw, 40px); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 17px; color: var(--ink-soft); margin: 0 0 40px; max-width: 62ch; }
+
+  h2 {
+    font-family: var(--font-display); font-weight: 600; font-size: 15px;
+    letter-spacing: .01em; margin: 0 0 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+  }
+  section { margin-bottom: 40px; }
+
+  .docs { display: flex; flex-direction: column; gap: 2px; }
+  .doc {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--copper);
+    padding: 16px 20px;
+    transition: background .12s ease;
+  }
+  .doc:hover { background: var(--surface-2); }
+  .doc:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+  .doc.plain { border-left-color: var(--rule); }
+
+  .doc-title {
+    font-family: var(--font-display); font-weight: 600; font-size: 17px;
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .doc-title .path {
+    font-family: var(--font-mono); font-size: 11.5px; font-weight: 400;
+    color: var(--ink-faint);
+  }
+  .doc p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+
+  .note {
+    background: var(--surface-2);
+    border-left: 2px solid var(--copper);
+    padding: 14px 18px;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin: 0; }
+  .note strong { color: var(--ink); }
+  code {
+    font-family: var(--font-mono); font-size: .88em;
+    background: var(--surface); padding: 1px 5px; border-radius: 3px;
+    border: 1px solid var(--rule-soft);
+  }
+  a { color: var(--copper); text-underline-offset: 2px; }
+  ol { margin: 8px 0 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">EDM Zone · Quoting automation</p>
+  <h1>Project documents</h1>
+  <p class="standfirst">
+    Everything written about this system, in one place, so it is one click away
+    rather than a scroll back through a conversation.
+  </p>
+
+  <section>
+    <h2>Read these first</h2>
+    <div class="docs">
+
+      <a class="doc" href="SETUP_WORKLIST.html">
+        <span class="doc-title">
+          Setup worklist
+          <span class="path">docs/SETUP_WORKLIST.html</span>
+        </span>
+        <p>
+          What the business has to supply, decide or switch on before the system can
+          price a real enquiry. Rates, the shared mailbox and 20–30 already-quoted
+          drawings are the three that block everything else.
+        </p>
+      </a>
+
+      <a class="doc" href="BUILD_SPEC.md">
+        <span class="doc-title">
+          Build specification
+          <span class="path">docs/BUILD_SPEC.md</span>
+        </span>
+        <p>
+          The original brief this was built to, extracted from the supplied PDF.
+          The source of every design rule in the codebase.
+        </p>
+      </a>
+
+      <a class="doc plain" href="../README.md">
+        <span class="doc-title">
+          README
+          <span class="path">README.md</span>
+        </span>
+        <p>
+          How to run it, how an enquiry moves through the pipeline, and the design
+          decisions worth knowing about before changing anything.
+        </p>
+      </a>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Seeing the app</h2>
+    <div class="note">
+      <p>
+        <strong>A shareable preview builds from the repository itself.</strong>
+        <code>cd frontend &amp;&amp; npm run build:demo</code> writes
+        <code>dist-demo/preview.html</code> — one self-contained file, no server
+        needed, that opens straight from disk and shows the real workspace with
+        recorded data in it.
+      </p>
+      <p>
+        It is a preview, not the system: nothing you click changes anything, and
+        two people opening it do not share state. For staff to actually work in it,
+        the backend has to be hosted and sign-in switched on — section J of the
+        worklist covers what that needs.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Making this page render on GitHub</h2>
+    <div class="note">
+      <p>
+        GitHub shows <code>.html</code> files as source code, not as pages. Turning on
+        <strong>GitHub Pages</strong> fixes that and gives every document here a
+        permanent web address:
+      </p>
+      <ol>
+        <li>Repository <strong>Settings → Pages</strong></li>
+        <li>Source: <strong>Deploy from a branch</strong></li>
+        <li>Branch: the current default, folder: <code>/docs</code></li>
+      </ol>
+      <p style="margin-top:10px">
+        After that this index lives at
+        <code>https://roger-edm-zone.github.io/Automated-Quoting-Machine/</code> and
+        the worklist one click from it — versioned with the code, and updating
+        whenever a change is pushed.
+      </p>
+      <p>
+        Note that Pages sites are public by default. If these documents should stay
+        private, leave Pages off and open the files locally instead — the content is
+        in the repository either way.
+      </p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
