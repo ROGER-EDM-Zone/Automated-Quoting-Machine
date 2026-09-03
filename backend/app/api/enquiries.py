@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.serialise import breakdown_out, part_price_out
 from app.db import get_db
 from app.deps import CurrentUser, get_ai, get_current_user, get_enquiry, get_storage_dep
 from app.enums import EnquiryStatus, FlagSeverity, JobType
-from app.models import Customer, Enquiry, Flag, Part, Quote
+from app.models import Enquiry, Flag, Part, Quote
 from app.pricing import PricingError
 from app.schemas import (
     EnquiryOut,
@@ -95,7 +95,9 @@ def run_pricing(
         )
     except NotPriceable as exc:
         db.commit()  # keep the blocking flags the attempt raised
-        raise HTTPException(status_code=409, detail={"detail": str(exc), "reasons": exc.reasons}) from exc
+        raise HTTPException(
+            status_code=409, detail={"detail": str(exc), "reasons": exc.reasons}
+        ) from exc
     except PricingError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -125,9 +127,7 @@ def get_workspace(
             # priced — that is exactly when an estimator needs to look at it.
             logger.info("Breakdown unavailable for enquiry %s: %s", enquiry.id, exc)
 
-    enquiry_flags = list(
-        db.scalars(select(Flag).where(Flag.enquiry_id == enquiry.id)).all()
-    )
+    enquiry_flags = list(db.scalars(select(Flag).where(Flag.enquiry_id == enquiry.id)).all())
     blockers = unresolved_blockers(db, enquiry, quote) if quote is not None else []
 
     ambiguous: dict[int, dict] = {}
@@ -174,69 +174,67 @@ def get_queue(
         )
     enquiries = list(db.scalars(stmt.order_by(Enquiry.received_at.desc())).all())
 
-    customer_names = dict(db.execute(select(Customer.id, Customer.name)).all())
-    now = datetime.now(timezone.utc)
-    items: list[QueueItemOut] = []
-
-    for enquiry in enquiries:
-        quote = current_quote(db, enquiry) or next(
-            (q for q in sorted(enquiry.quotes, key=lambda q: -q.version)), None
-        )
-        part_ids = [p.id for p in enquiry.parts]
-        flag_rows = list(
-            db.scalars(
-                select(Flag).where(
-                    Flag.resolved.is_(False),
-                    (Flag.enquiry_id == enquiry.id)
-                    | (Flag.part_id.in_(part_ids) if part_ids else False)
-                    | (Flag.quote_id == (quote.id if quote else -1)),
-                )
-            ).all()
-        )
-        confidences = [
-            score
-            for part in enquiry.parts
-            for score in (part.extraction_confidence or {}).values()
-            if isinstance(score, (int, float))
-        ]
-        received = enquiry.received_at
-        if received is not None and received.tzinfo is None:
-            received = received.replace(tzinfo=timezone.utc)
-
-        items.append(
-            QueueItemOut(
-                enquiry_id=enquiry.id,
-                customer_name=customer_names.get(enquiry.customer_id),
-                subject=enquiry.subject,
-                status=enquiry.status,
-                received_at=enquiry.received_at,
-                age_hours=round((now - received).total_seconds() / 3600, 1) if received else 0.0,
-                part_count=len(enquiry.parts),
-                job_types=sorted({p.job_type for p in enquiry.parts}),
-                process_mix=sorted(
-                    {proc for p in enquiry.parts for proc in (p.process_mix or [])}
-                ),
-                total_quantity=sum(p.quantity or 0 for p in enquiry.parts),
-                quote_id=quote.id if quote else None,
-                quote_value=quote.quote_value if quote else None,
-                flag_count=len(flag_rows),
-                blocking_flag_count=sum(
-                    1 for f in flag_rows if f.severity == FlagSeverity.BLOCK.value
-                ),
-                lowest_confidence=min(confidences) if confidences else None,
-                due_date=enquiry.due_date,
-            )
-        )
+    items = [_queue_item(db, enquiry) for enquiry in enquiries]
 
     sorters = {
         "age": lambda i: -i.age_hours,
         "value": lambda i: -(i.quote_value or 0),
         "flags": lambda i: (-i.blocking_flag_count, -i.flag_count),
         # Lowest confidence first: the ones most likely to be wrong.
-        "confidence": lambda i: (i.lowest_confidence if i.lowest_confidence is not None else 2),
+        "confidence": lambda i: i.lowest_confidence if i.lowest_confidence is not None else 2,
     }
     items.sort(key=sorters[sort])
     return items[:limit]
+
+
+def _queue_item(db: Session, enquiry: Enquiry) -> QueueItemOut:
+    """One triage row. Shared by the queue and the Outlook card so the two
+    cannot drift apart into disagreeing summaries of the same enquiry."""
+    quote = current_quote(db, enquiry) or next(
+        (q for q in sorted(enquiry.quotes, key=lambda q: -q.version)), None
+    )
+    part_ids = [p.id for p in enquiry.parts]
+    conditions = [Flag.enquiry_id == enquiry.id]
+    if part_ids:
+        conditions.append(Flag.part_id.in_(part_ids))
+    if quote is not None:
+        conditions.append(Flag.quote_id == quote.id)
+
+    flag_rows = list(
+        db.scalars(select(Flag).where(Flag.resolved.is_(False), or_(*conditions))).all()
+    )
+    confidences = [
+        score
+        for part in enquiry.parts
+        for score in (part.extraction_confidence or {}).values()
+        if isinstance(score, (int, float))
+    ]
+
+    received = enquiry.received_at
+    if received is not None and received.tzinfo is None:
+        received = received.replace(tzinfo=UTC)
+    now = datetime.now(UTC)
+
+    customer_name = enquiry.customer.name if enquiry.customer is not None else None
+
+    return QueueItemOut(
+        enquiry_id=enquiry.id,
+        customer_name=customer_name,
+        subject=enquiry.subject,
+        status=enquiry.status,
+        received_at=enquiry.received_at,
+        age_hours=round((now - received).total_seconds() / 3600, 1) if received else 0.0,
+        part_count=len(enquiry.parts),
+        job_types=sorted({p.job_type for p in enquiry.parts}),
+        process_mix=sorted({proc for p in enquiry.parts for proc in (p.process_mix or [])}),
+        total_quantity=sum(p.quantity or 0 for p in enquiry.parts),
+        quote_id=quote.id if quote else None,
+        quote_value=quote.quote_value if quote else None,
+        flag_count=len(flag_rows),
+        blocking_flag_count=sum(1 for f in flag_rows if f.severity == FlagSeverity.BLOCK.value),
+        lowest_confidence=min(confidences) if confidences else None,
+        due_date=enquiry.due_date,
+    )
 
 
 @router.get("/enquiries/{enquiry_id}/parts/{part_id}/paths")
@@ -250,17 +248,32 @@ def get_ambiguous_paths(
     part = db.get(Part, part_id)
     if part is None or part.enquiry_id != enquiry.id:
         raise HTTPException(status_code=404, detail="Part not found on this enquiry")
-    return {
-        name: part_price_out(price)
-        for name, price in ambiguous_cost_paths(db, part).items()
-    }
+    return {name: part_price_out(price) for name, price in ambiguous_cost_paths(db, part).items()}
+
+
+@router.get("/enquiries/by-message/{outlook_message_id:path}", response_model=QueueItemOut)
+def get_by_message(
+    outlook_message_id: str,
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """Triage summary for the enquiry raised from one Outlook message.
+
+    The add-in has a message id and nothing else, so this is how the card in
+    the reading pane finds its enquiry. Returns the same shape as the queue.
+    """
+    enquiry = db.scalars(
+        select(Enquiry).where(Enquiry.outlook_message_id == outlook_message_id)
+    ).first()
+    if enquiry is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No enquiry has been raised from this message yet",
+        )
+    return _queue_item(db, enquiry)
 
 
 @router.get("/stats/pipeline")
-def pipeline_stats(
-    db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)
-):
-    rows = db.execute(
-        select(Enquiry.status, func.count(Enquiry.id)).group_by(Enquiry.status)
-    ).all()
+def pipeline_stats(db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)):
+    rows = db.execute(select(Enquiry.status, func.count(Enquiry.id)).group_by(Enquiry.status)).all()
     return {status: count for status, count in rows}

@@ -6,14 +6,7 @@ enum ... never free text") so adding a member here is a schema decision, not
 a convenience.
 """
 
-from enum import Enum
-
-
-class StrEnum(str, Enum):
-    """str-valued enum: serialises as its value, compares to plain strings."""
-
-    def __str__(self) -> str:  # pragma: no cover - trivial
-        return self.value
+from enum import StrEnum
 
 
 class EnquiryStatus(StrEnum):

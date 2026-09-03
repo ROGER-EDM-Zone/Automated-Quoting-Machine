@@ -38,9 +38,7 @@ def get_customer(
     quotes = (
         list(
             db.scalars(
-                select(Quote)
-                .where(Quote.enquiry_id.in_(enquiry_ids))
-                .order_by(Quote.id.desc())
+                select(Quote).where(Quote.enquiry_id.in_(enquiry_ids)).order_by(Quote.id.desc())
             ).all()
         )
         if enquiry_ids
@@ -78,11 +76,7 @@ def get_customer(
                     None,
                 ),
                 "outcome": next(
-                    (
-                        q.outcome.result
-                        for q in quotes
-                        if q.enquiry_id == enquiry.id and q.outcome
-                    ),
+                    (q.outcome.result for q in quotes if q.enquiry_id == enquiry.id and q.outcome),
                     None,
                 ),
             }

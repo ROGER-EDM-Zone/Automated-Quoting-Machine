@@ -83,9 +83,7 @@ def test_subcontract_cost_is_unit_cost_times_quantity_and_ignores_time():
 
 def test_subcontract_without_a_unit_cost_is_an_error_not_a_zero():
     with pytest.raises(PricingError, match="subcontract_unit_cost"):
-        price_operation(
-            op(process=Process.SUBCONTRACT.value, subcontract_unit_cost=None), 1
-        )
+        price_operation(op(process=Process.SUBCONTRACT.value, subcontract_unit_cost=None), 1)
 
 
 def test_missing_rate_raises_rather_than_defaulting():
@@ -111,8 +109,18 @@ def test_full_build_up_follows_the_spec_formulae():
             quantity=2,
             job_type=JobType.FULL_SUPPLY.value,
             operations=(
-                op(op_number=10, set_time_mins=D("60"), run_time_mins_per_unit=D("30"), hourly_rate=D("60")),
-                op(op_number=20, process=Process.GRIND.value, set_time_mins=D("30"), hourly_rate=D("40")),
+                op(
+                    op_number=10,
+                    set_time_mins=D("60"),
+                    run_time_mins_per_unit=D("30"),
+                    hourly_rate=D("60"),
+                ),
+                op(
+                    op_number=20,
+                    process=Process.GRIND.value,
+                    set_time_mins=D("30"),
+                    hourly_rate=D("40"),
+                ),
             ),
             materials=(MaterialInput(qty_required=D("1"), unit_cost=D("80.00")),),
         ),
@@ -197,9 +205,24 @@ def test_repeated_pricing_of_the_same_inputs_is_byte_identical():
             quantity=7,
             job_type=JobType.FULL_SUPPLY.value,
             operations=(
-                op(op_number=10, set_time_mins=D("47.5"), run_time_mins_per_unit=D("13.25"), hourly_rate=D("38.00")),
-                op(op_number=20, process=Process.WIRE_EDM.value, run_time_mins_per_unit=D("9.75"), hourly_rate=D("41.50")),
-                op(op_number=30, process=Process.SUBCONTRACT.value, subcontract_unit_cost=D("7.35"), hourly_rate=None),
+                op(
+                    op_number=10,
+                    set_time_mins=D("47.5"),
+                    run_time_mins_per_unit=D("13.25"),
+                    hourly_rate=D("38.00"),
+                ),
+                op(
+                    op_number=20,
+                    process=Process.WIRE_EDM.value,
+                    run_time_mins_per_unit=D("9.75"),
+                    hourly_rate=D("41.50"),
+                ),
+                op(
+                    op_number=30,
+                    process=Process.SUBCONTRACT.value,
+                    subcontract_unit_cost=D("7.35"),
+                    hourly_rate=None,
+                ),
             ),
             materials=(MaterialInput(qty_required=D("2"), unit_cost=D("63.33")),),
         )
@@ -216,7 +239,9 @@ def test_repeated_pricing_of_the_same_inputs_is_byte_identical():
 def test_rule_order_does_not_change_the_price():
     parts = [part(quantity=3, operations=(op(set_time_mins=D("90"), hourly_rate=D("55")),))]
     rush = AdjustmentRule(1, RuleKey.RUSH_UPLIFT.value, AdjustmentType.PCT.value, D("15"))
-    conting = AdjustmentRule(2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("7.5"))
+    conting = AdjustmentRule(
+        2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("7.5")
+    )
     forwards = price_quote(parts, D("20"), [rush, conting])
     backwards = price_quote(parts, D("20"), [conting, rush])
     assert forwards.quote_value == backwards.quote_value
@@ -226,7 +251,8 @@ def test_engine_makes_no_network_or_ai_calls():
     """Guards the spec's central rule: code calculates, AI never prices."""
     import app.pricing as pricing_module
 
-    source = open(pricing_module.__file__, encoding="utf-8").read()
+    with open(pricing_module.__file__, encoding="utf-8") as handle:
+        source = handle.read()
     for forbidden in ("anthropic", "requests", "httpx", "urllib", "openai"):
         assert forbidden not in source, f"pricing engine must not reference {forbidden}"
 
@@ -238,7 +264,9 @@ def test_percentage_rules_are_summed_not_compounded():
     parts = [part(operations=(op(set_time_mins=D("60"), hourly_rate=D("100")),))]
     rules = [
         AdjustmentRule(1, RuleKey.RUSH_UPLIFT.value, AdjustmentType.PCT.value, D("10")),
-        AdjustmentRule(2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("10")),
+        AdjustmentRule(
+            2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("10")
+        ),
     ]
     quote = price_quote(parts, D("0"), rules)
     # 100 base + 20% = 120.00, not 121.00 (which compounding would give).
@@ -249,7 +277,9 @@ def test_percentage_effects_are_itemised_per_rule_and_sum_exactly():
     parts = [part(operations=(op(set_time_mins=D("60"), hourly_rate=D("100")),))]
     rules = [
         AdjustmentRule(1, RuleKey.RUSH_UPLIFT.value, AdjustmentType.PCT.value, D("10")),
-        AdjustmentRule(2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("5")),
+        AdjustmentRule(
+            2, RuleKey.DIFFICULT_JOB_CONTINGENCY.value, AdjustmentType.PCT.value, D("5")
+        ),
     ]
     quote = price_quote(parts, D("0"), rules)
     effects = {a.rule_key: a.effect for a in quote.adjustments}
@@ -261,7 +291,9 @@ def test_percentage_effects_are_itemised_per_rule_and_sum_exactly():
 
 def test_min_quote_value_lifts_a_cheap_quote_and_is_recorded():
     parts = [part(operations=(op(set_time_mins=D("6"), hourly_rate=D("50")),))]  # 5.00
-    rules = [AdjustmentRule(9, RuleKey.MIN_QUOTE_VALUE.value, AdjustmentType.FIXED.value, D("75.00"))]
+    rules = [
+        AdjustmentRule(9, RuleKey.MIN_QUOTE_VALUE.value, AdjustmentType.FIXED.value, D("75.00"))
+    ]
     quote = price_quote(parts, D("0"), rules)
     assert quote.quote_value == D("75.00")
     assert quote.min_value_applied is True
@@ -272,7 +304,9 @@ def test_min_quote_value_lifts_a_cheap_quote_and_is_recorded():
 
 def test_min_quote_value_does_not_touch_a_quote_already_above_it():
     parts = [part(operations=(op(set_time_mins=D("600"), hourly_rate=D("50")),))]  # 500.00
-    rules = [AdjustmentRule(9, RuleKey.MIN_QUOTE_VALUE.value, AdjustmentType.FIXED.value, D("75.00"))]
+    rules = [
+        AdjustmentRule(9, RuleKey.MIN_QUOTE_VALUE.value, AdjustmentType.FIXED.value, D("75.00"))
+    ]
     quote = price_quote(parts, D("0"), rules)
     assert quote.quote_value == D("500.00")
     assert quote.min_value_applied is False
@@ -319,7 +353,16 @@ def test_unit_price_times_quantity_always_equals_the_line_total():
     """Customer-facing arithmetic must not visibly fail to add up."""
     for quantity in range(1, 40):
         priced = price_part(
-            part(quantity=quantity, operations=(op(set_time_mins=D("37"), run_time_mins_per_unit=D("11.3"), hourly_rate=D("43.70")),)),
+            part(
+                quantity=quantity,
+                operations=(
+                    op(
+                        set_time_mins=D("37"),
+                        run_time_mins_per_unit=D("11.3"),
+                        hourly_rate=D("43.70"),
+                    ),
+                ),
+            ),
             margin_pct=D("27.5"),
         )
         assert priced.unit_price * quantity == priced.line_total
@@ -339,8 +382,19 @@ def test_build_up_reconciles_across_awkward_quantities_and_rules():
                     quantity=quantity,
                     job_type=JobType.FULL_SUPPLY.value,
                     operations=(
-                        op(op_number=10, set_time_mins=D("22.5"), run_time_mins_per_unit=D("6.7"), hourly_rate=D("38.00")),
-                        op(op_number=20, process=Process.QC.value, set_time_mins=D("5"), run_time_mins_per_unit=D("1.5"), hourly_rate=D("29.00")),
+                        op(
+                            op_number=10,
+                            set_time_mins=D("22.5"),
+                            run_time_mins_per_unit=D("6.7"),
+                            hourly_rate=D("38.00"),
+                        ),
+                        op(
+                            op_number=20,
+                            process=Process.QC.value,
+                            set_time_mins=D("5"),
+                            run_time_mins_per_unit=D("1.5"),
+                            hourly_rate=D("29.00"),
+                        ),
                     ),
                     materials=(MaterialInput(qty_required=D("1"), unit_cost=D("41.11")),),
                 )
@@ -367,7 +421,11 @@ def test_time_source_is_carried_through_to_the_costed_operation():
         part(
             operations=(
                 op(op_number=10, time_source=TimeSource.CALCULATOR.value, set_time_mins=D("10")),
-                op(op_number=20, time_source=TimeSource.HISTORICAL_ESTIMATE.value, set_time_mins=D("10")),
+                op(
+                    op_number=20,
+                    time_source=TimeSource.HISTORICAL_ESTIMATE.value,
+                    set_time_mins=D("10"),
+                ),
                 op(op_number=30, time_source=TimeSource.MANUAL.value, set_time_mins=D("10")),
             )
         ),

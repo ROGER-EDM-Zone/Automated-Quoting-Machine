@@ -18,8 +18,8 @@ export function SourcedTime({ value, source }: { value: string | null; source: T
   };
   return (
     <span className={`time-${source}`} title={label[source]}>
+      {source === "historical_estimate" && "≈"}
       {minutes(value)}
-      {source === "historical_estimate" && " ≈"}
     </span>
   );
 }

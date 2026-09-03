@@ -69,9 +69,7 @@ def _ingest_in_background(message_id: str) -> None:
         if settings.graph_rfq_category and settings.graph_rfq_category not in message.categories:
             logger.info("Message %s is not tagged for quoting; ignored", message_id)
             return
-        result = ingest_message(
-            db, message, require_category=settings.graph_rfq_category
-        )
+        result = ingest_message(db, message, require_category=settings.graph_rfq_category)
         db.commit()
         logger.info("Enquiry %s created from message %s", result.enquiry.id, message_id)
     except (GraphNotConfigured, GraphError):
@@ -99,9 +97,7 @@ def create_subscription(
 
 
 @router.post("/webhook/subscription/{subscription_id}/renew")
-def renew_subscription(
-    subscription_id: str, _user: CurrentUser = Depends(get_current_user)
-):
+def renew_subscription(subscription_id: str, _user: CurrentUser = Depends(get_current_user)):
     try:
         return get_graph_client().renew_subscription(subscription_id)
     except GraphNotConfigured as exc:

@@ -52,11 +52,7 @@ def list_rates(
             RateTable.effective_from <= today,
             (RateTable.effective_to.is_(None)) | (RateTable.effective_to > today),
         )
-    return list(
-        db.scalars(
-            stmt.order_by(RateTable.process, RateTable.effective_from.desc())
-        ).all()
-    )
+    return list(db.scalars(stmt.order_by(RateTable.process, RateTable.effective_from.desc())).all())
 
 
 @router.post("/rates", response_model=RateOut, status_code=201)
@@ -260,9 +256,7 @@ def update_stock(
 # Customers
 # --------------------------------------------------------------------------
 @router.get("/customers", response_model=list[CustomerOut])
-def list_customers(
-    db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)
-):
+def list_customers(db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)):
     return list(db.scalars(select(Customer).order_by(Customer.name)).all())
 
 
@@ -272,9 +266,7 @@ def create_customer(
     db: Session = Depends(get_db),
     _user: CurrentUser = Depends(get_current_user),
 ):
-    if body.domain and db.scalars(
-        select(Customer).where(Customer.domain == body.domain)
-    ).first():
+    if body.domain and db.scalars(select(Customer).where(Customer.domain == body.domain)).first():
         raise HTTPException(status_code=409, detail=f"Domain {body.domain} already mapped")
     customer = Customer(**body.model_dump())
     db.add(customer)

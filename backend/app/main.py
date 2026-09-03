@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if settings.environment == "development":

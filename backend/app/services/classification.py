@@ -158,9 +158,11 @@ def classify_part(
     _apply_email_facts(db, part, payload)
     _apply_concerns(db, part, payload)
     db.flush()
-    return {**payload, "resolved_process_mix": mix, "history": {
-        lane: [m.as_dict() for m in entries] for lane, entries in matches.items()
-    }}
+    return {
+        **payload,
+        "resolved_process_mix": mix,
+        "history": {lane: [m.as_dict() for m in entries] for lane, entries in matches.items()},
+    }
 
 
 def _apply_job_type(db: Session, part: Part, payload: dict) -> None:
@@ -192,9 +194,7 @@ def _apply_process_mix(
     db: Session, part: Part, payload: dict, settings: Settings
 ) -> tuple[list[str], list[str]]:
     """Settle the process mix, enforcing the customer's constraint in code."""
-    named = [
-        p for p in (payload.get("customer_named_processes") or []) if p in _VALID_PROCESSES
-    ]
+    named = [p for p in (payload.get("customer_named_processes") or []) if p in _VALID_PROCESSES]
     proposed = [p for p in (payload.get("process_mix") or []) if p in _VALID_PROCESSES]
 
     if named:
@@ -395,20 +395,23 @@ def _apply_email_facts(db: Session, part: Part, payload: dict) -> None:
                 db, part.id, "quantity", resolved_by="classification:email"
             )
 
-    if facts.get("requests_certification") and enquiry.customer is not None:
-        if not enquiry.customer.requires_cert:
-            flag_service.raise_flag(
-                db,
-                enquiry_id=enquiry.id,
-                category=FlagCategory.COMMERCIAL_JUDGEMENT.value,
-                severity=FlagSeverity.WARN.value,
-                message=(
-                    "This enquiry asks for certification but the customer "
-                    "record does not normally require it. Certification costs "
-                    "time — confirm before quoting."
-                ),
-                dedupe_key="cert_requested",
-            )
+    if (
+        facts.get("requests_certification")
+        and enquiry.customer is not None
+        and not enquiry.customer.requires_cert
+    ):
+        flag_service.raise_flag(
+            db,
+            enquiry_id=enquiry.id,
+            category=FlagCategory.COMMERCIAL_JUDGEMENT.value,
+            severity=FlagSeverity.WARN.value,
+            message=(
+                "This enquiry asks for certification but the customer record "
+                "does not normally require it. Certification costs time — "
+                "confirm before quoting."
+            ),
+            dedupe_key="cert_requested",
+        )
 
     if facts.get("urgency_wording"):
         # Deliberately not turned into a rush uplift. The percentage lives in
@@ -420,7 +423,7 @@ def _apply_email_facts(db: Session, part: Part, payload: dict) -> None:
             severity=FlagSeverity.INFO.value,
             message=(
                 "The customer said: "
-                f"\"{facts['urgency_wording']}\". If this warrants a rush "
+                f'"{facts["urgency_wording"]}". If this warrants a rush '
                 "uplift, apply the rush_uplift rule — no uplift has been "
                 "applied automatically."
             ),
@@ -522,9 +525,7 @@ def duplicate_check(db: Session, enquiry: Enquiry) -> None:
             prior = db.get(Enquiry, other.enquiry_id)
             if prior is None:
                 continue
-            prior_quote = next(
-                (q for q in sorted(prior.quotes, key=lambda q: -q.version)), None
-            )
+            prior_quote = next((q for q in sorted(prior.quotes, key=lambda q: -q.version)), None)
 
             if (other.revision or "") == (attachment.revision or ""):
                 flag_service.raise_flag(
@@ -536,7 +537,11 @@ def duplicate_check(db: Session, enquiry: Enquiry) -> None:
                         f"Drawing {attachment.drawing_number} rev "
                         f"{attachment.revision or '-'} was already quoted on "
                         f"enquiry {prior.id}"
-                        + (f" (quote {prior_quote.id}, £{prior_quote.quote_value})" if prior_quote else "")
+                        + (
+                            f" (quote {prior_quote.id}, £{prior_quote.quote_value})"
+                            if prior_quote
+                            else ""
+                        )
                         + ". Check whether this is a repeat before requoting."
                     ),
                     dedupe_key=f"duplicate:{other.id}",

@@ -154,7 +154,7 @@ def test_a_different_drawing_raises_nothing(db):
         ("2", "1", True),
         ("1", "2", False),
         ("B", "B", False),
-        ("A", "1", False),   # different schemes: refuse to compare
+        ("A", "1", False),  # different schemes: refuse to compare
         ("AA", "B", False),  # different lengths: refuse to compare
         (None, "B", False),
     ],
@@ -222,6 +222,7 @@ def test_the_reply_module_contains_no_ai_call():
     """Customer-facing numbers are formatted, never generated."""
     import app.services.reply as reply_module
 
-    source = open(reply_module.__file__, encoding="utf-8").read()
+    with open(reply_module.__file__, encoding="utf-8") as handle:
+        source = handle.read()
     for forbidden in ("anthropic", "ai.structured", "get_ai_client", "StructuredCaller"):
         assert forbidden not in source

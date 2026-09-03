@@ -12,9 +12,9 @@ and what does that cost" — nothing else.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Sequence
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.enums import StockForm
 
@@ -178,8 +178,6 @@ def nest(
         candidates.append(((total_cost, pieces, -utilisation, stock.stock_id), result))
 
     if not candidates:
-        raise NestingError(
-            "Part does not fit any available stock size — needs a buyer decision"
-        )
+        raise NestingError("Part does not fit any available stock size — needs a buyer decision")
     candidates.sort(key=lambda pair: pair[0])
     return candidates[0][1]

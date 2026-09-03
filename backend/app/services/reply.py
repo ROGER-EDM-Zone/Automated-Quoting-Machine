@@ -101,8 +101,7 @@ def build_reply(db: Session, enquiry: Enquiry, quote: Quote) -> DraftReply:
         drawing = line.drawing_number or "—"
         revision = f" rev {line.revision}" if line.revision else ""
         text_lines += [
-            f"Drawing {drawing}{revision}"
-            + (f" — {line.description}" if line.description else ""),
+            f"Drawing {drawing}{revision}" + (f" — {line.description}" if line.description else ""),
             f"  Quantity:    {line.quantity}",
             f"  Unit price:  {_money(line.unit_price)}",
             f"  Line total:  {_money(line.line_total)}",
@@ -123,8 +122,7 @@ def build_reply(db: Session, enquiry: Enquiry, quote: Quote) -> DraftReply:
     ]
     if service_only:
         text_lines.append(
-            "This quotation is for machining only; material to be supplied by "
-            "yourselves."
+            "This quotation is for machining only; material to be supplied by yourselves."
         )
     else:
         text_lines.append("Price includes material.")
@@ -133,8 +131,7 @@ def build_reply(db: Session, enquiry: Enquiry, quote: Quote) -> DraftReply:
 
     text_lines += [
         "",
-        "This quotation is valid for 30 days. Please let us know if anything "
-        "needs adjusting.",
+        "This quotation is valid for 30 days. Please let us know if anything needs adjusting.",
         "",
         "Kind regards",
     ]
@@ -164,7 +161,11 @@ def build_reply(db: Session, enquiry: Enquiry, quote: Quote) -> DraftReply:
 <p>Dear {escape(customer_name)},</p>
 <p>Thank you for your enquiry. We are pleased to quote as follows.</p>
 <p>Our reference: <strong>{escape(reference)}</strong>
-{f"<br>Your reference: {escape(enquiry.customer_reference)}" if enquiry.customer_reference else ""}</p>
+{
+        f"<br>Your reference: {escape(enquiry.customer_reference)}"
+        if enquiry.customer_reference
+        else ""
+    }</p>
 <table cellpadding="6" cellspacing="0" border="0" style="border-collapse:collapse">
   <thead>
     <tr style="border-bottom:1px solid #999">
@@ -182,17 +183,16 @@ def build_reply(db: Session, enquiry: Enquiry, quote: Quote) -> DraftReply:
   </tfoot>
 </table>
 <p>{escape(_lead_time_line(quote))}</p>
-<p>{"This quotation is for machining only; material to be supplied by yourselves."
-     if service_only else "Price includes material."}</p>
+<p>{
+        "This quotation is for machining only; material to be supplied by yourselves."
+        if service_only
+        else "Price includes material."
+    }</p>
 <p>This quotation is valid for 30 days. Please let us know if anything needs adjusting.</p>
 <p>Kind regards</p>"""
 
     recipients = [enquiry.sender_email] if enquiry.sender_email else []
     if not recipients:
-        raise ReplyError(
-            f"Enquiry {enquiry.id} has no sender address to reply to."
-        )
+        raise ReplyError(f"Enquiry {enquiry.id} has no sender address to reply to.")
 
-    return DraftReply(
-        subject=subject, body_text=body_text, body_html=body_html, to=recipients
-    )
+    return DraftReply(subject=subject, body_text=body_text, body_html=body_html, to=recipients)

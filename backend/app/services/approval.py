@@ -9,6 +9,7 @@ than in the API layer so that no future caller can route around it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -23,9 +24,7 @@ class ApprovalBlocked(Exception):
 
     def __init__(self, flags: list[Flag]) -> None:
         self.flags = flags
-        super().__init__(
-            f"{len(flags)} blocking flag(s) must be resolved before approval"
-        )
+        super().__init__(f"{len(flags)} blocking flag(s) must be resolved before approval")
 
     def as_dict(self) -> dict:
         return {
@@ -138,9 +137,7 @@ def mark_sent(db: Session, enquiry: Enquiry, quote: Quote) -> SendResult:
     if enquiry.received_at is not None:
         received = enquiry.received_at
         if received.tzinfo is None:
-            from datetime import timezone
-
-            received = received.replace(tzinfo=timezone.utc)
+            received = received.replace(tzinfo=UTC)
         turnaround = int((sent_at - received).total_seconds())
         enquiry.turnaround_seconds = turnaround
 

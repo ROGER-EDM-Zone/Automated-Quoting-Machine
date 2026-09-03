@@ -80,11 +80,7 @@ class ConfidenceOutcome:
 
 
 def _severity_for(field_name: str) -> str:
-    return (
-        FlagSeverity.BLOCK.value
-        if field_name in BLOCKING_FIELDS
-        else FlagSeverity.WARN.value
-    )
+    return FlagSeverity.BLOCK.value if field_name in BLOCKING_FIELDS else FlagSeverity.WARN.value
 
 
 def apply_policy(

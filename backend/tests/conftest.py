@@ -45,7 +45,9 @@ from app.models import (  # noqa: E402
 
 @pytest.fixture
 def db():
-    engine = create_engine("sqlite:///:memory:", future=True, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///:memory:", future=True, connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)()
     try:
@@ -60,10 +62,18 @@ def rates(db):
     """Illustrative rate rows, effective from a year ago."""
     since = date.today() - timedelta(days=365)
     rows = [
-        RateTable(process=Process.CNC_MILL.value, hourly_rate=Decimal("55.00"), effective_from=since),
-        RateTable(process=Process.CNC_TURN.value, hourly_rate=Decimal("52.00"), effective_from=since),
-        RateTable(process=Process.WIRE_EDM.value, hourly_rate=Decimal("42.00"), effective_from=since),
-        RateTable(process=Process.SPARK_ERODE.value, hourly_rate=Decimal("38.00"), effective_from=since),
+        RateTable(
+            process=Process.CNC_MILL.value, hourly_rate=Decimal("55.00"), effective_from=since
+        ),
+        RateTable(
+            process=Process.CNC_TURN.value, hourly_rate=Decimal("52.00"), effective_from=since
+        ),
+        RateTable(
+            process=Process.WIRE_EDM.value, hourly_rate=Decimal("42.00"), effective_from=since
+        ),
+        RateTable(
+            process=Process.SPARK_ERODE.value, hourly_rate=Decimal("38.00"), effective_from=since
+        ),
         RateTable(process=Process.GRIND.value, hourly_rate=Decimal("40.00"), effective_from=since),
         RateTable(process=Process.MANUAL.value, hourly_rate=Decimal("35.00"), effective_from=since),
         RateTable(process=Process.QC.value, hourly_rate=Decimal("30.00"), effective_from=since),

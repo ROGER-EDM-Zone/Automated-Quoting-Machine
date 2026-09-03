@@ -165,6 +165,7 @@ def test_nesting_is_deterministic_including_ties():
 def test_nesting_makes_no_ai_calls():
     import app.nesting as nesting_module
 
-    source = open(nesting_module.__file__, encoding="utf-8").read()
+    with open(nesting_module.__file__, encoding="utf-8") as handle:
+        source = handle.read()
     for forbidden in ("anthropic", "httpx", "requests", "openai"):
         assert forbidden not in source

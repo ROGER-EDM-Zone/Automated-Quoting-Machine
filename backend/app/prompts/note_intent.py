@@ -81,9 +81,7 @@ def build_schema(rule_keys: list[str]) -> dict[str, Any]:
     not merely discouraged — it is unrepresentable.
     """
     apply_rule_schema: dict[str, Any] = (
-        {"type": ["string", "null"], "enum": [*rule_keys, None]}
-        if rule_keys
-        else {"type": "null"}
+        {"type": ["string", "null"], "enum": [*rule_keys, None]} if rule_keys else {"type": "null"}
     )
 
     return {
@@ -134,8 +132,7 @@ def build_schema(rule_keys: list[str]) -> dict[str, Any]:
                         "margin_pct": {
                             "type": ["number", "null"],
                             "description": (
-                                "Only when the estimator stated a margin "
-                                "percentage themselves."
+                                "Only when the estimator stated a margin percentage themselves."
                             ),
                         },
                         "rule_key": apply_rule_schema,

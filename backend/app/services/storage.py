@@ -107,9 +107,7 @@ def get_storage(settings: Settings | None = None) -> Storage:
     settings = settings or get_settings()
     if settings.storage_backend == "azure":
         if not settings.azure_storage_connection_string:
-            raise RuntimeError(
-                "AQM_STORAGE_BACKEND=azure but no connection string is set"
-            )
+            raise RuntimeError("AQM_STORAGE_BACKEND=azure but no connection string is set")
         return AzureBlobStorage(
             settings.azure_storage_connection_string,
             settings.azure_storage_container,

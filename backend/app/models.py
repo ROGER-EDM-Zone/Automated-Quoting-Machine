@@ -10,18 +10,18 @@ Conventions:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
@@ -34,11 +34,8 @@ from app.enums import (
     AdjustmentType,
     AttachmentKind,
     EnquiryStatus,
-    FlagCategory,
     FlagSeverity,
     JobType,
-    NoteKind,
-    OutcomeResult,
     Process,
     QuoteStatus,
     TimeSource,
@@ -51,7 +48,7 @@ Qty = Numeric(12, 3)
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TimestampMixin:
@@ -73,9 +70,7 @@ class Customer(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     domain: Mapped[str | None] = mapped_column(String(200), index=True)
 
-    default_margin_pct: Mapped[Decimal] = mapped_column(
-        Pct, nullable=False, default=Decimal("0")
-    )
+    default_margin_pct: Mapped[Decimal] = mapped_column(Pct, nullable=False, default=Decimal("0"))
     default_lead_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     #: Service-only vs full supply: does this customer normally send material?
     is_material_supplied_default: Mapped[bool] = mapped_column(
@@ -84,7 +79,7 @@ class Customer(Base, TimestampMixin):
     requires_cert: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
 
-    enquiries: Mapped[list["Enquiry"]] = relationship(back_populates="customer")
+    enquiries: Mapped[list[Enquiry]] = relationship(back_populates="customer")
 
 
 # --------------------------------------------------------------------------
@@ -110,9 +105,7 @@ class Enquiry(Base, TimestampMixin):
     #: e.g. "previous quote 6123" — the anchor for repricing from history.
     customer_reference: Mapped[str | None] = mapped_column(String(200))
     #: Resolved anchor, set when customer_reference maps to a real past quote.
-    anchor_quote_id: Mapped[int | None] = mapped_column(
-        ForeignKey("quote.id", ondelete="SET NULL")
-    )
+    anchor_quote_id: Mapped[int | None] = mapped_column(ForeignKey("quote.id", ondelete="SET NULL"))
     due_date: Mapped[date | None] = mapped_column(Date)
     #: Computed at send: received_at → sent_at.
     turnaround_seconds: Mapped[int | None] = mapped_column(Integer)
@@ -120,13 +113,11 @@ class Enquiry(Base, TimestampMixin):
     error_detail: Mapped[str | None] = mapped_column(Text)
 
     customer: Mapped[Customer | None] = relationship(back_populates="enquiries")
-    attachments: Mapped[list["Attachment"]] = relationship(
+    attachments: Mapped[list[Attachment]] = relationship(
         back_populates="enquiry", cascade="all, delete-orphan"
     )
-    parts: Mapped[list["Part"]] = relationship(
-        back_populates="enquiry", cascade="all, delete-orphan"
-    )
-    quotes: Mapped[list["Quote"]] = relationship(
+    parts: Mapped[list[Part]] = relationship(back_populates="enquiry", cascade="all, delete-orphan")
+    quotes: Mapped[list[Quote]] = relationship(
         back_populates="enquiry",
         cascade="all, delete-orphan",
         foreign_keys="Quote.enquiry_id",
@@ -157,7 +148,7 @@ class Attachment(Base, TimestampMixin):
     page_count: Mapped[int | None] = mapped_column(Integer)
 
     enquiry: Mapped[Enquiry] = relationship(back_populates="attachments")
-    parts: Mapped[list["Part"]] = relationship(back_populates="attachment")
+    parts: Mapped[list[Part]] = relationship(back_populates="attachment")
 
 
 # --------------------------------------------------------------------------
@@ -215,26 +206,24 @@ class Part(Base, TimestampMixin):
     process_mix: Mapped[list[str] | None] = mapped_column(JSON)
     #: True when the customer named the processes explicitly, so the
     #: classifier must not infer extras.
-    process_mix_constrained: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    process_mix_constrained: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     enquiry: Mapped[Enquiry] = relationship(back_populates="parts")
     attachment: Mapped[Attachment | None] = relationship(back_populates="parts")
-    operations: Mapped[list["Operation"]] = relationship(
+    operations: Mapped[list[Operation]] = relationship(
         back_populates="part",
         cascade="all, delete-orphan",
         order_by="Operation.op_number",
     )
-    material_requirements: Mapped[list["MaterialRequirement"]] = relationship(
+    material_requirements: Mapped[list[MaterialRequirement]] = relationship(
         back_populates="part", cascade="all, delete-orphan"
     )
-    flags: Mapped[list["Flag"]] = relationship(
+    flags: Mapped[list[Flag]] = relationship(
         back_populates="part",
         cascade="all, delete-orphan",
         foreign_keys="Flag.part_id",
     )
-    corrections: Mapped[list["CorrectionLog"]] = relationship(
+    corrections: Mapped[list[CorrectionLog]] = relationship(
         back_populates="part", cascade="all, delete-orphan"
     )
 
@@ -259,9 +248,7 @@ class Operation(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     process: Mapped[str] = mapped_column(String(32), nullable=False)
 
-    set_time_mins: Mapped[Decimal] = mapped_column(
-        Minutes, nullable=False, default=Decimal("0")
-    )
+    set_time_mins: Mapped[Decimal] = mapped_column(Minutes, nullable=False, default=Decimal("0"))
     run_time_mins_per_unit: Mapped[Decimal] = mapped_column(
         Minutes, nullable=False, default=Decimal("0")
     )
@@ -274,9 +261,7 @@ class Operation(Base, TimestampMixin):
         String(32), nullable=False, default=TimeSource.MANUAL.value
     )
     #: When time_source == historical_estimate, the quote it was drawn from.
-    source_quote_id: Mapped[int | None] = mapped_column(
-        ForeignKey("quote.id", ondelete="SET NULL")
-    )
+    source_quote_id: Mapped[int | None] = mapped_column(ForeignKey("quote.id", ondelete="SET NULL"))
     #: The rate_table row used, for audit of a price after a rate change.
     rate_table_id: Mapped[int | None] = mapped_column(
         ForeignKey("rate_table.id", ondelete="SET NULL")
@@ -284,9 +269,7 @@ class Operation(Base, TimestampMixin):
 
     part: Mapped[Part] = relationship(back_populates="operations")
 
-    __table_args__ = (
-        UniqueConstraint("part_id", "op_number", name="uq_operation_part_opnum"),
-    )
+    __table_args__ = (UniqueConstraint("part_id", "op_number", name="uq_operation_part_opnum"),)
 
     @property
     def is_subcontract(self) -> bool:
@@ -306,12 +289,8 @@ class MaterialRequirement(Base, TimestampMixin):
     stock_form: Mapped[str | None] = mapped_column(String(40))
     stock_size: Mapped[str | None] = mapped_column(String(200))
 
-    qty_required: Mapped[Decimal] = mapped_column(
-        Qty, nullable=False, default=Decimal("0")
-    )
-    unit_cost: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
+    qty_required: Mapped[Decimal] = mapped_column(Qty, nullable=False, default=Decimal("0"))
+    unit_cost: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
     #: Nesting outputs — deterministic, not an AI judgement.
     blanks_per_unit_stock: Mapped[int | None] = mapped_column(Integer)
     utilisation_pct: Mapped[Decimal | None] = mapped_column(Pct)
@@ -335,24 +314,12 @@ class Quote(Base, TimestampMixin):
         String(32), nullable=False, default=QuoteStatus.DRAFT.value, index=True
     )
 
-    material_total: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
-    labour_total: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
-    subtotal: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
-    margin_pct: Mapped[Decimal] = mapped_column(
-        Pct, nullable=False, default=Decimal("0")
-    )
-    margin_value: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
-    quote_value: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
+    material_total: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
+    labour_total: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
+    subtotal: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
+    margin_pct: Mapped[Decimal] = mapped_column(Pct, nullable=False, default=Decimal("0"))
+    margin_value: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
+    quote_value: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
     #: Uplifts/contingencies applied from rules_table, itemised for audit.
     adjustments: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     #: rules_table rows a human (or the note loop, citing a rule) has put in
@@ -361,9 +328,7 @@ class Quote(Base, TimestampMixin):
     #: and is not listed here.
     applied_rule_ids: Mapped[list[int] | None] = mapped_column(JSON)
     #: Set when rules_table.min_quote_value lifted the price.
-    min_value_applied: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    min_value_applied: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     lead_time_days: Mapped[int | None] = mapped_column(Integer)
     approved_by: Mapped[str | None] = mapped_column(String(320))
@@ -374,29 +339,25 @@ class Quote(Base, TimestampMixin):
     frozen_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     outlook_draft_id: Mapped[str | None] = mapped_column(String(512))
 
-    enquiry: Mapped[Enquiry] = relationship(
-        back_populates="quotes", foreign_keys=[enquiry_id]
-    )
-    lines: Mapped[list["QuoteLine"]] = relationship(
+    enquiry: Mapped[Enquiry] = relationship(back_populates="quotes", foreign_keys=[enquiry_id])
+    lines: Mapped[list[QuoteLine]] = relationship(
         back_populates="quote", cascade="all, delete-orphan"
     )
-    flags: Mapped[list["Flag"]] = relationship(
+    flags: Mapped[list[Flag]] = relationship(
         back_populates="quote",
         cascade="all, delete-orphan",
         foreign_keys="Flag.quote_id",
     )
-    notes: Mapped[list["QuoteNote"]] = relationship(
+    notes: Mapped[list[QuoteNote]] = relationship(
         back_populates="quote",
         cascade="all, delete-orphan",
         order_by="QuoteNote.created_at",
     )
-    outcome: Mapped["QuoteOutcome | None"] = relationship(
+    outcome: Mapped[QuoteOutcome | None] = relationship(
         back_populates="quote", cascade="all, delete-orphan", uselist=False
     )
 
-    __table_args__ = (
-        UniqueConstraint("enquiry_id", "version", name="uq_quote_enquiry_version"),
-    )
+    __table_args__ = (UniqueConstraint("enquiry_id", "version", name="uq_quote_enquiry_version"),)
 
 
 class QuoteLine(Base, TimestampMixin):
@@ -406,16 +367,10 @@ class QuoteLine(Base, TimestampMixin):
     quote_id: Mapped[int] = mapped_column(
         ForeignKey("quote.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    part_id: Mapped[int | None] = mapped_column(
-        ForeignKey("part.id", ondelete="SET NULL")
-    )
+    part_id: Mapped[int | None] = mapped_column(ForeignKey("part.id", ondelete="SET NULL"))
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    unit_price: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
-    line_total: Mapped[Decimal] = mapped_column(
-        Money, nullable=False, default=Decimal("0")
-    )
+    unit_price: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
+    line_total: Mapped[Decimal] = mapped_column(Money, nullable=False, default=Decimal("0"))
     #: Denormalised so a frozen/sent quote still reads correctly if the part
     #: is later edited for a new revision.
     drawing_number: Mapped[str | None] = mapped_column(String(120))
@@ -469,12 +424,8 @@ class Flag(Base, TimestampMixin):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolution_note: Mapped[str | None] = mapped_column(Text)
 
-    part: Mapped[Part | None] = relationship(
-        back_populates="flags", foreign_keys=[part_id]
-    )
-    quote: Mapped[Quote | None] = relationship(
-        back_populates="flags", foreign_keys=[quote_id]
-    )
+    part: Mapped[Part | None] = relationship(back_populates="flags", foreign_keys=[part_id])
+    quote: Mapped[Quote | None] = relationship(back_populates="flags", foreign_keys=[quote_id])
 
     @property
     def is_blocking(self) -> bool:
@@ -513,9 +464,7 @@ class QuoteNote(Base):
     #: The concrete input change the AI proposed, as applied.
     proposed_change: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     #: True when the AI declined to act and asked the estimator instead.
-    awaiting_answer: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    awaiting_answer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     question: Mapped[str | None] = mapped_column(Text)
 
     quote: Mapped[Quote] = relationship(back_populates="notes")
@@ -563,9 +512,7 @@ class RateTable(Base, TimestampMixin):
     #: one rate is in force on the changeover date.
     effective_to: Mapped[date | None] = mapped_column(Date)
 
-    __table_args__ = (
-        Index("ix_rate_lookup", "process", "machine_group", "effective_from"),
-    )
+    __table_args__ = (Index("ix_rate_lookup", "process", "machine_group", "effective_from"),)
 
 
 class RulesTable(Base, TimestampMixin):
@@ -611,9 +558,7 @@ class StockSize(Base, TimestampMixin):
     thickness_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     unit_cost: Mapped[Decimal] = mapped_column(Money, nullable=False)
     #: Saw/grip allowance added around each blank, mm.
-    kerf_mm: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=Decimal("3")
-    )
+    kerf_mm: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("3"))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 

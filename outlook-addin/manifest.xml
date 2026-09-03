@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Outlook add-in manifest (spec section 4).
+
+  Read-only triage. The task pane shows enough to judge routine vs
+  needs-attention without leaving the inbox, and hands off to the web app for
+  anything else. ReadItem permission only: the add-in never writes, never
+  approves and never sends.
+
+  Replace https://quoting.example.internal with the host serving src/.
+-->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+           xsi:type="MailApp">
+  <Id>7d3f1c4e-9a2b-4f60-8e11-5c3a6b0d2f88</Id>
+  <Version>0.1.0</Version>
+  <ProviderName>Quoting Automation</ProviderName>
+  <DefaultLocale>en-GB</DefaultLocale>
+  <DisplayName DefaultValue="Quote triage" />
+  <Description DefaultValue="Shows the state of the draft quote for this RFQ, and links to the full workspace." />
+  <IconUrl DefaultValue="https://quoting.example.internal/addin/icon-64.png" />
+  <HighResolutionIconUrl DefaultValue="https://quoting.example.internal/addin/icon-128.png" />
+  <SupportUrl DefaultValue="https://quoting.example.internal/support" />
+
+  <AppDomains>
+    <AppDomain>https://quoting.example.internal</AppDomain>
+  </AppDomains>
+
+  <Hosts><Host Name="Mailbox" /></Hosts>
+  <Requirements>
+    <Sets>
+      <Set Name="Mailbox" MinVersion="1.5" />
+    </Sets>
+  </Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://quoting.example.internal/addin/taskpane.html" />
+        <RequestedHeight>400</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <!-- Read only. This add-in is not a work surface. -->
+  <Permissions>ReadItem</Permissions>
+
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read" />
+  </Rule>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+                    xsi:type="VersionOverridesV1_0">
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.5"><bt:Set Name="Mailbox" /></bt:Sets>
+    </Requirements>
+    <Hosts>
+      <Host xsi:type="MailHost">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="MessageReadCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="quotingGroup">
+                <Label resid="groupLabel" />
+                <Control xsi:type="Button" id="openTriage">
+                  <Label resid="buttonLabel" />
+                  <Supertip>
+                    <Title resid="buttonLabel" />
+                    <Description resid="buttonTip" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16" />
+                    <bt:Image size="32" resid="icon32" />
+                    <bt:Image size="80" resid="icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="icon16" DefaultValue="https://quoting.example.internal/addin/icon-16.png" />
+        <bt:Image id="icon32" DefaultValue="https://quoting.example.internal/addin/icon-32.png" />
+        <bt:Image id="icon80" DefaultValue="https://quoting.example.internal/addin/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://quoting.example.internal/addin/taskpane.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="groupLabel" DefaultValue="Quoting" />
+        <bt:String id="buttonLabel" DefaultValue="Quote triage" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="buttonTip" DefaultValue="See the draft quote and flags for this enquiry." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

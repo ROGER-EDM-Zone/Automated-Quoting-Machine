@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -75,7 +75,7 @@ class GraphClient:
 
     def token(self) -> str:
         self._require_config()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if self._token and self._token_expires and now < self._token_expires:
             return self._token
 
@@ -111,7 +111,7 @@ class GraphClient:
     # -- intake ---------------------------------------------------------
     def create_subscription(self, notification_url: str) -> dict[str, Any]:
         """Subscribe to new mail in the quoting mailbox."""
-        expiry = datetime.now(timezone.utc) + timedelta(minutes=SUBSCRIPTION_MINUTES)
+        expiry = datetime.now(UTC) + timedelta(minutes=SUBSCRIPTION_MINUTES)
         body = {
             "changeType": "created",
             "notificationUrl": notification_url,
@@ -122,7 +122,7 @@ class GraphClient:
         return self._request("POST", "/subscriptions", json=body).json()
 
     def renew_subscription(self, subscription_id: str) -> dict[str, Any]:
-        expiry = datetime.now(timezone.utc) + timedelta(minutes=SUBSCRIPTION_MINUTES)
+        expiry = datetime.now(UTC) + timedelta(minutes=SUBSCRIPTION_MINUTES)
         return self._request(
             "PATCH",
             f"/subscriptions/{subscription_id}",
@@ -189,9 +189,7 @@ class GraphClient:
         body_html: str,
     ) -> dict[str, Any]:
         """Create a reply draft. Deliberately does not send it."""
-        draft = self._request(
-            "POST", f"/users/{mailbox}/messages/{message_id}/createReply"
-        ).json()
+        draft = self._request("POST", f"/users/{mailbox}/messages/{message_id}/createReply").json()
         draft_id = draft["id"]
         self._request(
             "PATCH",

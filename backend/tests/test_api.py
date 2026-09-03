@@ -7,9 +7,7 @@ an invented fixture (spec section 9).
 
 from __future__ import annotations
 
-import base64
 from datetime import date, timedelta
-from decimal import Decimal as D
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,7 +20,7 @@ from app.db import Base, get_db
 from app.deps import get_ai, get_storage_dep
 from app.enums import AttachmentKind, EnquiryStatus, JobType, Process, QuoteStatus, TimeSource
 from app.main import app
-from app.models import Attachment, CorrectionLog, Customer, Enquiry, Flag, utcnow
+from app.models import Attachment, Enquiry, Flag, utcnow
 from app.services.ai import StubAIClient
 from app.services.storage import LocalStorage, attachment_key, content_hash
 
@@ -182,20 +180,26 @@ def seeded(api):
         (Process.QC.value, "30.00"),
         (Process.SPARK_ERODE.value, "38.00"),
     ):
-        assert client.post(
-            "/admin/rates",
-            json={"process": process, "hourly_rate": rate, "effective_from": since},
-        ).status_code == 201
+        assert (
+            client.post(
+                "/admin/rates",
+                json={"process": process, "hourly_rate": rate, "effective_from": since},
+            ).status_code
+            == 201
+        )
 
-    assert client.post(
-        "/admin/rules",
-        json={
-            "rule_key": "min_quote_value",
-            "trigger_description": "Minimum order value",
-            "adjustment_type": "fixed",
-            "adjustment_value": "150.00",
-        },
-    ).status_code == 201
+    assert (
+        client.post(
+            "/admin/rules",
+            json={
+                "rule_key": "min_quote_value",
+                "trigger_description": "Minimum order value",
+                "adjustment_type": "fixed",
+                "adjustment_value": "150.00",
+            },
+        ).status_code
+        == 201
+    )
     rush = client.post(
         "/admin/rules",
         json={
@@ -498,9 +502,7 @@ def test_a_reported_conflict_becomes_a_flag_and_is_not_resolved(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.append(
         _extraction_payload(
-            conflicts=[
-                {"field": "quantity", "detail": "title block says 4, note says 6"}
-            ]
+            conflicts=[{"field": "quantity", "detail": "title block says 4, note says 6"}]
         )
     )
     part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
@@ -527,7 +529,7 @@ def test_an_override_writes_a_correction_log_row_and_clears_the_flag(seeded):
     assert len(corrections) == 1
     row = corrections[0]
     assert row["field_name"] == "material"
-    assert row["ai_value"] == "1.2344?"      # what the AI actually read
+    assert row["ai_value"] == "1.2344?"  # what the AI actually read
     assert row["human_value"] == "1.2312"
     assert row["ai_confidence"] == 0.42
     assert row["was_withheld"] is True
@@ -679,3 +681,49 @@ def test_pricing_is_refused_when_a_rate_is_missing(seeded):
     assert refused.status_code == 409
     assert "cnc_turn" in str(refused.json()["detail"])
     assert session.query(Flag).filter(Flag.dedupe_key == "missing_rate:cnc_turn").count() == 1
+
+
+# --------------------------------------------------------------------------
+# The Outlook triage card
+# --------------------------------------------------------------------------
+def test_the_addin_can_find_an_enquiry_by_its_outlook_message_id(seeded):
+    client, session, stub, enquiry, *_ = seeded
+    stub.responses.extend([_extraction_payload(), _classification_payload()])
+    client.post(f"/enquiries/{enquiry.id}/extract")
+    client.post(f"/enquiries/{enquiry.id}/classify")
+
+    card = client.get("/enquiries/by-message/AAMk-api-0001")
+    assert card.status_code == 200, card.text
+    body = card.json()
+    assert body["enquiry_id"] == enquiry.id
+    assert body["customer_name"] == "Bracken Engineering"
+    assert body["blocking_flag_count"] >= 1
+
+
+def test_the_triage_card_and_the_queue_agree(seeded):
+    """Both read the same builder; a drift between them would mislead triage."""
+    client, session, stub, enquiry, *_ = seeded
+    stub.responses.extend([_extraction_payload(), _classification_payload()])
+    client.post(f"/enquiries/{enquiry.id}/extract")
+    client.post(f"/enquiries/{enquiry.id}/classify")
+    client.post(f"/enquiries/{enquiry.id}/price", json={})
+
+    card = client.get("/enquiries/by-message/AAMk-api-0001").json()
+    row = next(i for i in client.get("/queue").json() if i["enquiry_id"] == enquiry.id)
+    for field in (
+        "status",
+        "part_count",
+        "job_types",
+        "process_mix",
+        "total_quantity",
+        "quote_value",
+        "flag_count",
+        "blocking_flag_count",
+        "customer_name",
+    ):
+        assert card[field] == row[field], f"{field} disagrees between card and queue"
+
+
+def test_an_unknown_message_is_a_404_not_an_empty_card(seeded):
+    client, *_ = seeded
+    assert client.get("/enquiries/by-message/not-a-real-message").status_code == 404

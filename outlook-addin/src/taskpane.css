@@ -1,0 +1,24 @@
+:root {
+  --text: #1c2430; --muted: #66707d; --border: #dfe3e8;
+  --block: #b3261e; --block-bg: #fdecea; --ok: #1e6b45; --ok-bg: #e8f4ee;
+  --accent: #1f5f8b;
+}
+body {
+  margin: 0; padding: 16px; color: var(--text);
+  font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+}
+h1 { font-size: 16px; margin: 0 0 2px; }
+.sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+.state { color: var(--muted); }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0 0 16px; }
+dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+dd { margin: 0; font-variant-numeric: tabular-nums; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badge-block { background: var(--block-bg); color: var(--block); }
+.badge-ok { background: var(--ok-bg); color: var(--ok); }
+.badge-muted { background: #eceff2; color: var(--muted); }
+.button {
+  display: block; text-align: center; text-decoration: none;
+  background: var(--accent); color: #fff; padding: 8px 14px; border-radius: 6px; font-weight: 600;
+}
+.footnote { color: var(--muted); font-size: 12px; margin-top: 12px; }

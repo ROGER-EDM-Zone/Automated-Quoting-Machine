@@ -23,7 +23,6 @@ from app.enums import (
     FlagSeverity,
     JobType,
     QuoteStatus,
-    TimeSource,
 )
 from app.models import Enquiry, MaterialRequirement, Operation, Part, Quote, QuoteLine
 from app.nesting import NestingError, PartEnvelope, StockOption, nest

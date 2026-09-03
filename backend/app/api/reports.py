@@ -9,7 +9,7 @@ that predicts whether the project saves time or creates a new checking burden.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 def _since(days: int) -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=days)
+    return datetime.now(UTC) - timedelta(days=days)
 
 
 @router.get("/turnaround")
@@ -76,7 +76,7 @@ def extraction_accuracy(
 
     extracted: dict[str, int] = defaultdict(int)
     for part in db.scalars(select(Part)).all():
-        for field_name in (part.extraction_confidence or {}):
+        for field_name in part.extraction_confidence or {}:
             extracted[field_name] += 1
 
     per_field: dict[str, dict] = {}
@@ -106,9 +106,7 @@ def extraction_accuracy(
         )
         seen = extracted.get(field_name, 0)
         entry["fields_extracted"] = seen
-        entry["correction_rate_pct"] = (
-            round(100 * entry["corrections"] / seen, 1) if seen else None
-        )
+        entry["correction_rate_pct"] = round(100 * entry["corrections"] / seen, 1) if seen else None
 
     return {
         "window_days": days,
@@ -214,9 +212,7 @@ def estimate_vs_actual(
         source: {
             "jobs": len(ratios),
             "mean_ratio": round(sum(ratios) / len(ratios), 3),
-            "over_estimate_pct": round(
-                100 * sum(1 for r in ratios if r > 1.1) / len(ratios), 1
-            ),
+            "over_estimate_pct": round(100 * sum(1 for r in ratios if r > 1.1) / len(ratios), 1),
         }
         for source, ratios in by_source.items()
     }
@@ -224,14 +220,10 @@ def estimate_vs_actual(
 
 
 @router.get("/time-source-mix")
-def time_source_mix(
-    db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)
-):
+def time_source_mix(db: Session = Depends(get_db), _user: CurrentUser = Depends(get_current_user)):
     """How much of the quoted work rests on numbers that need checking."""
     rows = db.execute(
-        select(Operation.time_source, func.count(Operation.id)).group_by(
-            Operation.time_source
-        )
+        select(Operation.time_source, func.count(Operation.id)).group_by(Operation.time_source)
     ).all()
     counts = {source: count for source, count in rows}
     total = sum(counts.values())

@@ -100,8 +100,7 @@ def _rules_summary(db: Session) -> tuple[str, list[str]]:
     rows = active_rules(db)
     if not rows:
         return (
-            "  none defined. You cannot apply any percentage adjustment — "
-            "use `ask`.",
+            "  none defined. You cannot apply any percentage adjustment — use `ask`.",
             [],
         )
     lines = [
@@ -285,9 +284,7 @@ def _apply_actions(
             part = enquiry.parts[0]
         if part is None:
             reject(action, "could not tell which part this applies to")
-            questions.append(
-                f"Which part does this apply to? ({action.get('reason') or kind})"
-            )
+            questions.append(f"Which part does this apply to? ({action.get('reason') or kind})")
             continue
 
         if kind == "set_operation_time":
@@ -318,9 +315,7 @@ def _set_operation_time(db, part, action, applied, reject, questions) -> None:
     run_time = _decimal(action.get("run_time_mins_per_unit"))
     if set_time is None and run_time is None:
         reject(action, "no time given — the estimator must state the new minutes")
-        questions.append(
-            f"What should op {operation.op_number} ({operation.process}) be set to?"
-        )
+        questions.append(f"What should op {operation.op_number} ({operation.process}) be set to?")
         return
     if (set_time is not None and set_time < 0) or (run_time is not None and run_time < 0):
         reject(action, "negative times are not a thing")

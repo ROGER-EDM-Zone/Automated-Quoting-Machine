@@ -143,6 +143,13 @@ def _line_for(db: Session, part: Part) -> QuoteLine | None:
     ).first()
 
 
+def _same(left: str | None, right: str | None) -> bool:
+    """Case- and whitespace-insensitive equality, with None never matching."""
+    if not left or not right:
+        return False
+    return left.strip().lower() == right.strip().lower()
+
+
 def _volume(part: Part) -> Decimal | None:
     if None in (part.envelope_x, part.envelope_y, part.envelope_z):
         return None
@@ -192,10 +199,9 @@ def geometry_matches(db: Session, part: Part, *, limit: int = 5) -> list[Match]:
         score = 0.0
         reasons: list[str] = []
 
-        if part.material and candidate.material:
-            if candidate.material.strip().lower() == part.material.strip().lower():
-                score += 0.35
-                reasons.append(f"same material ({candidate.material})")
+        if _same(part.material, candidate.material):
+            score += 0.35
+            reasons.append(f"same material ({candidate.material})")
 
         candidate_volume = _volume(candidate)
         if subject_volume and candidate_volume and candidate_volume > 0:
@@ -237,21 +243,17 @@ def problem_matches(db: Session, part: Part, *, limit: int = 5) -> list[Match]:
             score += 0.4
             reasons.append(f"same tolerance band ({subject_band})")
 
-        if part.material and candidate.material:
-            if candidate.material.strip().lower() == part.material.strip().lower():
-                score += 0.2
-                reasons.append("same material")
-        if part.heat_treatment and candidate.heat_treatment:
-            if candidate.heat_treatment.strip().lower() == part.heat_treatment.strip().lower():
-                score += 0.15
-                reasons.append(f"same heat treatment ({candidate.heat_treatment})")
+        if _same(part.material, candidate.material):
+            score += 0.2
+            reasons.append("same material")
+        if _same(part.heat_treatment, candidate.heat_treatment):
+            score += 0.15
+            reasons.append(f"same heat treatment ({candidate.heat_treatment})")
 
         # Flag history on the same drawing number is the strongest signal
         # there is: this exact part has caused trouble before.
         if part.drawing_number and candidate.drawing_number == part.drawing_number:
-            prior_flags = db.scalars(
-                select(Flag).where(Flag.part_id == candidate.id)
-            ).all()
+            prior_flags = db.scalars(select(Flag).where(Flag.part_id == candidate.id)).all()
             if prior_flags:
                 score += 0.25
                 categories = sorted({f.category for f in prior_flags})

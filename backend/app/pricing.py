@@ -20,9 +20,9 @@ Rounding policy, fixed here so it is reviewable in one place:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Sequence
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.enums import AdjustmentType, JobType, Process, RuleKey, TimeSource
 
@@ -166,8 +166,7 @@ class PartPrice:
     def uses_untrusted_times(self) -> bool:
         """True when any operation's minutes are an AI historical estimate."""
         return any(
-            oc.time_source == TimeSource.HISTORICAL_ESTIMATE.value
-            for oc in self.operation_costs
+            oc.time_source == TimeSource.HISTORICAL_ESTIMATE.value for oc in self.operation_costs
         )
 
 
@@ -241,9 +240,7 @@ def price_operation(op: OperationInput, quantity: int) -> OperationCost:
 
     if op.is_subcontract:
         if op.subcontract_unit_cost is None:
-            raise PricingError(
-                f"Op {op.op_number} is subcontract but has no subcontract_unit_cost"
-            )
+            raise PricingError(f"Op {op.op_number} is subcontract but has no subcontract_unit_cost")
         cost = money(Decimal(op.subcontract_unit_cost) * qty)
         return OperationCost(
             op_number=op.op_number,
@@ -402,9 +399,7 @@ def price_quote(
             if index == len(ordered) - 1 or total_pct == 0:
                 effect = remaining
             else:
-                effect = money(
-                    (uplifted - base) * (Decimal(rule.adjustment_value) / total_pct)
-                )
+                effect = money((uplifted - base) * (Decimal(rule.adjustment_value) / total_pct))
             remaining = money(remaining - effect)
             applied.append(
                 AppliedAdjustment(
@@ -449,8 +444,7 @@ def price_quote(
                     adjustment_type=floor_rule.adjustment_type,
                     adjustment_value=floor,
                     effect=money(floor - running),
-                    description=floor_rule.trigger_description
-                    or "Minimum quote value applied",
+                    description=floor_rule.trigger_description or "Minimum quote value applied",
                 )
             )
             running = floor

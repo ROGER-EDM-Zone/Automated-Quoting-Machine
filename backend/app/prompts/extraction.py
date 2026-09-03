@@ -100,15 +100,13 @@ def _field_schema(name: str) -> dict[str, Any]:
                 "minimum": 0,
                 "maximum": 1,
                 "description": (
-                    "How sure you are that this is what the drawing says. "
-                    "Null when value is null."
+                    "How sure you are that this is what the drawing says. Null when value is null."
                 ),
             },
             "evidence": {
                 "type": ["string", "null"],
                 "description": (
-                    "Where on the drawing you read this, and any caveat. "
-                    "One short phrase."
+                    "Where on the drawing you read this, and any caveat. One short phrase."
                 ),
             },
         },
@@ -130,8 +128,7 @@ def build_schema() -> dict[str, Any]:
             "features": {
                 "type": "object",
                 "description": (
-                    "Countable features that drive machining, as read. Omit "
-                    "any you cannot count."
+                    "Countable features that drive machining, as read. Omit any you cannot count."
                 ),
                 "properties": {
                     "holes": {"type": ["integer", "null"]},
@@ -165,8 +162,7 @@ def build_schema() -> dict[str, Any]:
             "conflicts": {
                 "type": "array",
                 "description": (
-                    "Disagreements you found and did NOT resolve. One entry "
-                    "per conflict."
+                    "Disagreements you found and did NOT resolve. One entry per conflict."
                 ),
                 "items": {
                     "type": "object",

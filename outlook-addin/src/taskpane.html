@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quote triage</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <link rel="stylesheet" href="taskpane.css" />
+  </head>
+  <body>
+    <div id="app">
+      <p class="state" id="state">Loading…</p>
+
+      <div id="summary" hidden>
+        <h1 id="customer"></h1>
+        <p class="sub" id="subject"></p>
+
+        <!-- One line each. Enough to judge routine vs needs-attention. -->
+        <dl>
+          <dt>Status</dt><dd id="status"></dd>
+          <dt>Parts</dt><dd id="parts"></dd>
+          <dt>Job type</dt><dd id="jobType"></dd>
+          <dt>Process</dt><dd id="process"></dd>
+          <dt>Quantity</dt><dd id="quantity"></dd>
+          <dt>Needed by</dt><dd id="due"></dd>
+          <dt>Quote value</dt><dd id="value"></dd>
+          <dt>Flags</dt><dd id="flags"></dd>
+        </dl>
+
+        <a id="open" class="button" target="_blank" rel="noopener">Open full quote</a>
+        <p class="footnote">
+          Triage only. Pricing, notes and approval happen in the workspace —
+          nothing here changes a quote or sends anything.
+        </p>
+      </div>
+    </div>
+    <script src="taskpane.js"></script>
+  </body>
+</html>

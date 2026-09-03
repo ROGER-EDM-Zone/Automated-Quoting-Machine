@@ -85,8 +85,7 @@ class AnthropicAIClient:
             return self._client
         if not self.settings.anthropic_api_key:
             raise AIUnavailable(
-                "AQM_ANTHROPIC_API_KEY is not set — extraction and "
-                "classification cannot run"
+                "AQM_ANTHROPIC_API_KEY is not set — extraction and classification cannot run"
             )
         try:
             import anthropic
@@ -169,9 +168,7 @@ class AnthropicAIClient:
 
     @staticmethod
     def _parse(response) -> dict[str, Any]:
-        text = next(
-            (block.text for block in response.content if block.type == "text"), None
-        )
+        text = next((block.text for block in response.content if block.type == "text"), None)
         if not text:
             raise AIMalformedResponse("Response contained no text block")
         try:

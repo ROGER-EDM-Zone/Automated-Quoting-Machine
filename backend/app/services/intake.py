@@ -94,9 +94,7 @@ def ingest_message(
     storage = storage or get_storage()
 
     if require_category and require_category not in message.categories:
-        raise ValueError(
-            f"Message {message.message_id} is not tagged '{require_category}'"
-        )
+        raise ValueError(f"Message {message.message_id} is not tagged '{require_category}'")
 
     existing = db.scalars(
         select(Enquiry).where(Enquiry.outlook_message_id == message.message_id)

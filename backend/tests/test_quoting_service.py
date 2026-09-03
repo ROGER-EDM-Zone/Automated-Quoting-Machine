@@ -52,7 +52,9 @@ def test_rates_are_resolved_from_the_table_and_recorded_on_the_operation(
     assert mill.computed_cost == D("121.92")
 
 
-def test_customer_default_margin_is_used_when_none_is_given(db, enquiry, priceable_part, rates, customer):
+def test_customer_default_margin_is_used_when_none_is_given(
+    db, enquiry, priceable_part, rates, customer
+):
     quote = price_enquiry(db, enquiry)
     assert quote.margin_pct == D("30.000")
 
@@ -71,7 +73,9 @@ def test_repricing_is_idempotent(db, enquiry, priceable_part, rules):
     assert second.quote_value == first_value
 
 
-def test_a_missing_rate_blocks_with_a_flag_instead_of_inventing_one(db, enquiry, priceable_part, rates):
+def test_a_missing_rate_blocks_with_a_flag_instead_of_inventing_one(
+    db, enquiry, priceable_part, rates
+):
     db.add(
         Operation(
             part_id=priceable_part.id,
@@ -104,7 +108,14 @@ def test_a_rate_that_has_expired_is_not_used(db, enquiry, priceable_part, rates)
 
 
 def test_a_part_with_no_operations_cannot_be_priced(db, enquiry, drawing_attachment, rates):
-    db.add(Part(enquiry_id=enquiry.id, attachment_id=drawing_attachment.id, quantity=2, drawing_number="9000"))
+    db.add(
+        Part(
+            enquiry_id=enquiry.id,
+            attachment_id=drawing_attachment.id,
+            quantity=2,
+            drawing_number="9000",
+        )
+    )
     db.commit()
     with pytest.raises(NotPriceable, match="no operations"):
         price_enquiry(db, enquiry)
@@ -185,7 +196,9 @@ def test_the_breakdown_still_distinguishes_estimated_times(db, enquiry, priceabl
 # --------------------------------------------------------------------------
 # rules_table application
 # --------------------------------------------------------------------------
-def test_min_quote_value_applies_without_anyone_selecting_it(db, enquiry, drawing_attachment, rates, rules):
+def test_min_quote_value_applies_without_anyone_selecting_it(
+    db, enquiry, drawing_attachment, rates, rules
+):
     part = Part(
         enquiry_id=enquiry.id,
         attachment_id=drawing_attachment.id,
@@ -195,14 +208,18 @@ def test_min_quote_value_applies_without_anyone_selecting_it(db, enquiry, drawin
     )
     db.add(part)
     db.flush()
-    db.add(Operation(part_id=part.id, op_number=10, process=Process.MANUAL.value, set_time_mins=D("6")))
+    db.add(
+        Operation(part_id=part.id, op_number=10, process=Process.MANUAL.value, set_time_mins=D("6"))
+    )
     db.commit()
     quote = price_enquiry(db, enquiry)
     assert quote.min_value_applied is True
     assert quote.quote_value == D("150.00")
 
 
-def test_a_rush_uplift_only_applies_once_it_is_put_in_scope(db, enquiry, priceable_part, rates, rules):
+def test_a_rush_uplift_only_applies_once_it_is_put_in_scope(
+    db, enquiry, priceable_part, rates, rules
+):
     before = price_enquiry(db, enquiry).quote_value
     quote = current_quote(db, enquiry)
     quote.applied_rule_ids = [rules["rush_uplift"].id]

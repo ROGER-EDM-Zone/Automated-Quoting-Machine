@@ -105,9 +105,7 @@ def extract_attachment(
         images=images,
     )
 
-    field_payload = {
-        name: payload[name] for name in extraction_prompt.FIELDS if name in payload
-    }
+    field_payload = {name: payload[name] for name in extraction_prompt.FIELDS if name in payload}
     outcome = apply_policy(readings_from_payload(field_payload), settings)
 
     part = db.scalars(
@@ -233,9 +231,7 @@ def extract_enquiry(
     settings: Settings | None = None,
 ) -> list[ExtractionResult]:
     """Extract every drawing on an enquiry. Safe to call repeatedly."""
-    drawings = [
-        a for a in enquiry.attachments if a.kind == AttachmentKind.DRAWING.value
-    ]
+    drawings = [a for a in enquiry.attachments if a.kind == AttachmentKind.DRAWING.value]
     if not drawings:
         enquiry.status = EnquiryStatus.NEEDS_ATTENTION.value
         flag_service.raise_flag(
@@ -257,9 +253,7 @@ def extract_enquiry(
     for attachment in drawings:
         try:
             results.append(
-                extract_attachment(
-                    db, attachment, ai=ai, storage=storage, settings=settings
-                )
+                extract_attachment(db, attachment, ai=ai, storage=storage, settings=settings)
             )
         except AIRefused as exc:
             failures.append(f"{attachment.filename}: model declined ({exc.category})")

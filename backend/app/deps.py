@@ -51,9 +51,7 @@ def _decode_entra_token(token: str, settings: Settings) -> CurrentUser:
             detail="AQM_ENTRA_TENANT_ID and AQM_ENTRA_AUDIENCE must be set",
         )
 
-    jwks_url = (
-        f"https://login.microsoftonline.com/{settings.entra_tenant_id}/discovery/v2.0/keys"
-    )
+    jwks_url = f"https://login.microsoftonline.com/{settings.entra_tenant_id}/discovery/v2.0/keys"
     try:
         signing_key = PyJWKClient(jwks_url).get_signing_key_from_jwt(token)
         claims = jwt.decode(

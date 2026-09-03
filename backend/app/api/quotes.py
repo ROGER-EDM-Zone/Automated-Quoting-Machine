@@ -123,7 +123,11 @@ def draft_reply(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     if not enquiry.outlook_message_id:
-        return {"draft_created": False, "reason": "no Outlook message to reply to", **reply.as_dict()}
+        return {
+            "draft_created": False,
+            "reason": "no Outlook message to reply to",
+            **reply.as_dict(),
+        }
 
     try:
         client = get_graph_client()
