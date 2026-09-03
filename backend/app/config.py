@@ -55,6 +55,15 @@ class Settings(BaseSettings):
         }
     )
 
+    #: Spec section 8, open decision: "Whether the AI may propose processes
+    #: the customer didn't name, or only ever quote what was asked." Default
+    #: is to allow a proposal when the customer named nothing at all, clearly
+    #: marked as a proposal. When they did name processes, the routing is
+    #: constrained to those regardless of this setting.
+    propose_unnamed_processes: bool = True
+    #: Candidate past jobs shown to the classifier, per lane.
+    history_candidates_per_lane: int = 3
+
     # --- Microsoft Graph (intake + draft reply) ---
     graph_tenant_id: str | None = None
     graph_client_id: str | None = None

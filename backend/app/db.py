@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
 
@@ -20,8 +21,14 @@ def _make_engine() -> Engine:
     url = settings.database_url
     kwargs: dict = {"echo": settings.sql_echo, "future": True}
     if url.startswith("sqlite"):
-        # Needed so the FastAPI TestClient's thread can reuse the connection.
+        # FastAPI serves requests on a worker thread, so the connection has to
+        # be shareable across threads.
         kwargs["connect_args"] = {"check_same_thread": False}
+        if ":memory:" in url or "mode=memory" in url:
+            # Every new connection to an in-memory SQLite database is a
+            # *different* empty database. StaticPool keeps one connection, so
+            # the schema created at startup is the schema requests see.
+            kwargs["poolclass"] = StaticPool
     else:
         kwargs["pool_pre_ping"] = True
     return create_engine(url, **kwargs)

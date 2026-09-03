@@ -179,7 +179,15 @@ class Part(Base, TimestampMixin):
     drawing_number: Mapped[str | None] = mapped_column(String(120), index=True)
     revision: Mapped[str | None] = mapped_column(String(40))
     description: Mapped[str | None] = mapped_column(Text)
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    #: Nullable on purpose. Drawings frequently do not state a quantity, and
+    #: defaulting an unread quantity to 1 would be exactly the confidently
+    #: wrong value the rest of this system exists to prevent. None means
+    #: "nobody has told us yet", and pricing refuses to proceed on it.
+    quantity: Mapped[int | None] = mapped_column(Integer)
+    #: Where the quantity came from: "drawing", "email" or "estimator". The
+    #: workspace shows it, because a quantity read off an email is a different
+    #: kind of fact from one printed in a title block.
+    quantity_source: Mapped[str | None] = mapped_column(String(20))
 
     material: Mapped[str | None] = mapped_column(String(200))
     heat_treatment: Mapped[str | None] = mapped_column(String(200))
@@ -550,6 +558,9 @@ class RateTable(Base, TimestampMixin):
     machine_group: Mapped[str | None] = mapped_column(String(120))
     hourly_rate: Mapped[Decimal] = mapped_column(Money, nullable=False)
     effective_from: Mapped[date] = mapped_column(Date, nullable=False)
+    #: Exclusive: the rate applies on effective_from up to but NOT including
+    #: effective_to, so a replacement starting on the same day means exactly
+    #: one rate is in force on the changeover date.
     effective_to: Mapped[date | None] = mapped_column(Date)
 
     __table_args__ = (

@@ -152,11 +152,14 @@ def _apply_to_part(part: Part, outcome: ConfidenceOutcome, payload: dict) -> Non
         elif name in outcome.withheld or name in outcome.unread:
             setattr(part, name, None)
 
-    # Quantity has a NOT NULL default of 1 on the part, but an unread quantity
-    # must not read as "one off" — it is held at 1 only as a placeholder and
-    # the blocking flag is what stops it being quoted.
+    # An unread quantity stays None. It is not "one off" — it is unknown, and
+    # pricing refuses to run until a person or the email supplies it.
     if "quantity" in outcome.accepted and outcome.accepted["quantity"]:
         part.quantity = int(outcome.accepted["quantity"])
+        part.quantity_source = "drawing"
+    elif "quantity" in outcome.withheld or "quantity" in outcome.unread:
+        part.quantity = None
+        part.quantity_source = None
 
     for name in _ENVELOPE_FIELDS:
         if name in outcome.accepted and outcome.accepted[name] is not None:

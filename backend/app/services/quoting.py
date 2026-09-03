@@ -213,8 +213,11 @@ def _readiness_problems(db: Session, enquiry: Enquiry) -> list[str]:
         label = part.drawing_number or f"part {part.id}"
         if not part.operations:
             problems.append(f"{label} has no operations to cost.")
-        if part.quantity < 1:
-            problems.append(f"{label} has no usable quantity.")
+        if not part.quantity or part.quantity < 1:
+            problems.append(
+                f"{label} has no quantity. Nothing on the drawing or in the "
+                "email stated one, and it is not assumed."
+            )
         if part.job_type == JobType.AMBIGUOUS.value:
             # Not fatal: the workspace shows both cost paths. Recorded so the
             # estimator knows the figure is provisional.

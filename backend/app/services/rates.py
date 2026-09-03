@@ -40,7 +40,9 @@ def resolve_rate(
         .where(
             RateTable.process == process,
             RateTable.effective_from <= on_date,
-            or_(RateTable.effective_to.is_(None), RateTable.effective_to >= on_date),
+            # effective_to is exclusive, so the outgoing rate stops applying
+            # on the day its replacement starts.
+            or_(RateTable.effective_to.is_(None), RateTable.effective_to > on_date),
         )
         .order_by(RateTable.effective_from.desc(), RateTable.id.desc())
     )
