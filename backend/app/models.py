@@ -222,7 +222,9 @@ class Part(Base, TimestampMixin):
         back_populates="part", cascade="all, delete-orphan"
     )
     flags: Mapped[list["Flag"]] = relationship(
-        back_populates="part", cascade="all, delete-orphan"
+        back_populates="part",
+        cascade="all, delete-orphan",
+        foreign_keys="Flag.part_id",
     )
     corrections: Mapped[list["CorrectionLog"]] = relationship(
         back_populates="part", cascade="all, delete-orphan"
@@ -345,6 +347,11 @@ class Quote(Base, TimestampMixin):
     )
     #: Uplifts/contingencies applied from rules_table, itemised for audit.
     adjustments: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    #: rules_table rows a human (or the note loop, citing a rule) has put in
+    #: scope for this quote. Selecting a rule is a judgement; the percentage
+    #: itself always comes from the table. min_quote_value is always in scope
+    #: and is not listed here.
+    applied_rule_ids: Mapped[list[int] | None] = mapped_column(JSON)
     #: Set when rules_table.min_quote_value lifted the price.
     min_value_applied: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
@@ -366,7 +373,9 @@ class Quote(Base, TimestampMixin):
         back_populates="quote", cascade="all, delete-orphan"
     )
     flags: Mapped[list["Flag"]] = relationship(
-        back_populates="quote", cascade="all, delete-orphan"
+        back_populates="quote",
+        cascade="all, delete-orphan",
+        foreign_keys="Flag.quote_id",
     )
     notes: Mapped[list["QuoteNote"]] = relationship(
         back_populates="quote",

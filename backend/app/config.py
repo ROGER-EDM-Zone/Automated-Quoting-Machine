@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
     anthropic_max_tokens: int = 8000
+    #: Route a policy decline to a fallback model rather than stalling the
+    #: enquiry. The chain declining outright still raises — never guesses.
+    anthropic_refusal_fallback: bool = True
     # Rasterise drawings in this band before the vision call (spec stage 2).
     drawing_dpi: int = 175
 
