@@ -14,12 +14,22 @@ const SORT_LABELS: Record<Sort, string> = {
   confidence: "Lowest confidence",
 };
 
+interface PollResult {
+  checked: number;
+  new_enquiries: number[];
+  already_known: number;
+  failed: string[];
+}
+
 export default function Queue() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [sort, setSort] = useState<Sort>("flags");
   const [includeClosed, setIncludeClosed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [pollNotice, setPollNotice] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -28,16 +38,44 @@ export default function Queue() {
       .then(setItems)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [sort, includeClosed]);
+  }, [sort, includeClosed, reloadKey]);
+
+  /** Pull the mailbox on demand, rather than waiting for a notification. */
+  const checkMailbox = async () => {
+    setChecking(true);
+    setError(null);
+    setPollNotice(null);
+    try {
+      const result = await api.post<PollResult>("/intake/poll");
+      const found = result.new_enquiries.length;
+      setPollNotice(
+        found === 0
+          ? `Nothing new. Checked ${result.checked} tagged message${result.checked === 1 ? "" : "s"}.`
+          : `${found} new enquir${found === 1 ? "y" : "ies"} pulled in.`,
+      );
+      if (result.failed.length > 0) {
+        setError(`Some messages could not be read: ${result.failed.join("; ")}`);
+      }
+      if (found > 0) setReloadKey((k) => k + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <>
       <ErrorBanner error={error} />
+      {pollNotice && <div className="notice">{pollNotice}</div>}
       <Card
         title="Triage queue"
         hint={`${items.length} enquiries`}
         actions={
           <div className="button-row">
+            <button className="primary" onClick={() => void checkMailbox()} disabled={checking}>
+              {checking ? "Checking…" : "Check for new enquiries"}
+            </button>
             <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} style={{ width: 200 }}>
               {Object.entries(SORT_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>

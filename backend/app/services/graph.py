@@ -129,6 +129,68 @@ class GraphClient:
             json={"expirationDateTime": expiry.isoformat().replace("+00:00", "Z")},
         ).json()
 
+    def check_mailbox(self) -> dict[str, Any]:
+        """Confirm the mailbox exists and we can see it.
+
+        Used by the connection check so a misconfiguration reports as "the
+        mailbox is wrong" rather than as a mysterious failure three steps later.
+        """
+        mailbox = self.settings.graph_quoting_mailbox
+        return self._request(
+            "GET",
+            f"/users/{mailbox}",
+            params={"$select": "id,displayName,mail,userPrincipalName"},
+        ).json()
+
+    def list_tagged_messages(
+        self,
+        *,
+        category: str | None = None,
+        limit: int = 25,
+        since: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Recent Inbox messages carrying the RFQ category.
+
+        Filtering server-side keeps the shop's ordinary mail out of the app
+        entirely — untagged messages are never fetched, never stored, and never
+        read by the AI.
+        """
+        mailbox = self.settings.graph_quoting_mailbox
+        category = category if category is not None else self.settings.graph_rfq_category
+
+        filters: list[str] = []
+        if category:
+            escaped = category.replace("'", "''")
+            filters.append(f"categories/any(c:c eq '{escaped}')")
+        if since is not None:
+            filters.append(f"receivedDateTime ge {since.strftime('%Y-%m-%dT%H:%M:%SZ')}")
+
+        params: dict[str, Any] = {
+            "$select": "id,subject,receivedDateTime,categories,hasAttachments,from",
+            "$orderby": "receivedDateTime desc",
+            "$top": max(1, min(limit, 100)),
+        }
+        if filters:
+            params["$filter"] = " and ".join(filters)
+
+        response = self._request(
+            "GET",
+            f"/users/{mailbox}/mailFolders('Inbox')/messages",
+            params=params,
+        )
+        return response.json().get("value", [])
+
+    def list_categories(self) -> list[str]:
+        """The categories defined on the mailbox.
+
+        Lets the connection check say "the category you configured does not
+        exist in this mailbox" — by far the most likely reason for a silent
+        pipeline, and invisible otherwise.
+        """
+        mailbox = self.settings.graph_quoting_mailbox
+        data = self._request("GET", f"/users/{mailbox}/outlook/masterCategories").json()
+        return [entry.get("displayName", "") for entry in data.get("value", [])]
+
     def get_message(self, message_id: str) -> GraphMessage:
         mailbox = self.settings.graph_quoting_mailbox
         data = self._request(

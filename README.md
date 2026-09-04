@@ -87,7 +87,13 @@ deterministic — pricing, nesting, the build-up, approval, the reply — works
 without one.
 
 ```bash
-cd backend && pytest -q          # 126 tests
+# Check the Outlook connection, and be told exactly what is wrong if it isn't
+cd backend && python -m scripts.check_graph
+python -m scripts.check_graph --poll     # ...and pull any waiting mail in
+```
+
+```bash
+cd backend && pytest -q          # 135 tests
 cd frontend && npm run build     # typecheck + style guard + build
 ```
 

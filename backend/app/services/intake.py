@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.enums import AttachmentKind, EnquiryStatus
 from app.models import Attachment, Customer, Enquiry, utcnow
 from app.services.classification import duplicate_check
@@ -33,6 +34,20 @@ _SPREADSHEET_EXTENSIONS = {".xls", ".xlsx", ".xlsm", ".csv"}
 
 #: Inline signature images and logos that are not drawings.
 _NOISE = re.compile(r"(image\d{3,}|logo|signature|footer|banner)", re.I)
+
+
+@dataclass
+class PollResult:
+    """What one sweep of the mailbox found."""
+
+    checked: int = 0
+    ingested: list[int] = field(default_factory=list)
+    already_known: int = 0
+    failed: list[str] = field(default_factory=list)
+
+    @property
+    def new_count(self) -> int:
+        return len(self.ingested)
 
 
 @dataclass
@@ -185,6 +200,69 @@ def ingest_message(
     return IntakeResult(
         enquiry=enquiry, created=True, attachments_stored=stored, drawings_found=drawings
     )
+
+
+def poll_mailbox(
+    db: Session,
+    *,
+    client=None,
+    storage: Storage | None = None,
+    limit: int = 25,
+) -> PollResult:
+    """Pull tagged mail the app has not already seen.
+
+    Graph pushes a notification when tagged mail arrives, but a push can be
+    missed — the subscription lapses, the app is restarted, the notification
+    never lands. Polling is the backstop, and it is also what lets the system
+    run before there is a public address to push to at all.
+
+    Safe to call as often as you like: ingest is idempotent on the Outlook
+    message id, so a message already in the system is counted and skipped
+    rather than duplicated.
+    """
+    from app.services.graph import GraphError, get_graph_client
+
+    client = client or get_graph_client()
+    settings = get_settings()
+    result = PollResult()
+
+    messages = client.list_tagged_messages(category=settings.graph_rfq_category, limit=limit)
+    result.checked = len(messages)
+
+    known = {
+        row[0]
+        for row in db.execute(
+            select(Enquiry.outlook_message_id).where(
+                Enquiry.outlook_message_id.in_([m["id"] for m in messages] or [""])
+            )
+        ).all()
+    }
+
+    for summary in messages:
+        message_id = summary["id"]
+        if message_id in known:
+            result.already_known += 1
+            continue
+        try:
+            message = client.get_message(message_id)
+            ingested = ingest_message(
+                db, message, storage=storage, require_category=settings.graph_rfq_category
+            )
+            db.flush()
+            result.ingested.append(ingested.enquiry.id)
+        except (GraphError, ValueError) as exc:
+            # One bad message must not stop the rest of the sweep.
+            logger.exception("Could not ingest message %s", message_id)
+            result.failed.append(f"{summary.get('subject') or message_id}: {exc}")
+
+    logger.info(
+        "Mailbox poll: %d checked, %d new, %d already known, %d failed",
+        result.checked,
+        result.new_count,
+        result.already_known,
+        len(result.failed),
+    )
+    return result
 
 
 def duplicate_attachment_matches(db: Session, enquiry: Enquiry) -> list[Attachment]:
