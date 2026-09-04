@@ -87,6 +87,13 @@ deterministic — pricing, nesting, the build-up, approval, the reply — works
 without one.
 
 ```bash
+# Score extraction against drawings whose answers you already know.
+# This is the measurement that says whether the project is worth continuing.
+cd backend && python -m scripts.score_extraction --init ./scoring
+python -m scripts.score_extraction ./scoring
+```
+
+```bash
 # Check the Outlook connection, and be told exactly what is wrong if it isn't
 cd backend && python -m scripts.check_graph
 python -m scripts.check_graph --poll     # ...and pull any waiting mail in
