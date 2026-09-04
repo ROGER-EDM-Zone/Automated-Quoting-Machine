@@ -59,6 +59,10 @@ class Process(StrEnum):
     WIRE_EDM = "wire_edm"
     SPARK_ERODE = "spark_erode"
     GRIND = "grind"
+    #: Part marking. A distinct machine and a real operation — easy to leave
+    #: off a quote by accident, which is exactly why it gets its own process
+    #: rather than being buried in `manual`.
+    LASER_ETCH = "laser_etch"
     MANUAL = "manual"
     QC = "qc"
     SUBCONTRACT = "subcontract"
@@ -73,6 +77,7 @@ PRODUCTION_PROCESSES = frozenset(
         Process.WIRE_EDM,
         Process.SPARK_ERODE,
         Process.GRIND,
+        Process.LASER_ETCH,
     }
 )
 
