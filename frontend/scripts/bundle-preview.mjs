@@ -21,7 +21,8 @@ const js = readFileSync(resolve(dist, "app.js"), "utf8");
 // A literal </script> inside the bundle would close the tag early.
 const safeJs = js.replace(/<\/script>/gi, "<\\/script>");
 
-const fragment = `<title>Quoting workspace</title>
+// Named so it is findable among other pages, not just labelled by category.
+const fragment = `<title>EDM Zone Quoting Workspace</title>
 <style>
 ${css}
 </style>

@@ -26,6 +26,10 @@ from app.enums import (
     AdjustmentType,
     AttachmentKind,
     JobType,
+    MarketBasis,
+    MarketKind,
+    MarketMethod,
+    MarketUnit,
     Process,
     RuleKey,
     StockForm,
@@ -35,6 +39,8 @@ from app.models import (
     Attachment,
     Customer,
     Enquiry,
+    MarketObservation,
+    MarketSource,
     Operation,
     Part,
     RateTable,
@@ -74,6 +80,36 @@ RULES = [
         AdjustmentType.PCT.value,
         "10.00",
     ),
+    # Millimetres, not money. Without these the calculator sizes stock to the
+    # finished part and buys bar with nothing left to clean up.
+    (
+        RuleKey.MATERIAL_ALLOWANCE_SECTION.value,
+        "Material left on the diameter, or on each section face, for clean-up",
+        AdjustmentType.MM.value,
+        "4",
+    ),
+    (
+        RuleKey.MATERIAL_ALLOWANCE_LENGTH.value,
+        "Material left on the length of one part, before the parting kerf",
+        AdjustmentType.MM.value,
+        "4",
+    ),
+]
+
+#: Densities, kg/m3. Real physical constants rather than invented figures —
+#: without one, a per-kilo price cannot cost a bar and the job flags instead.
+DENSITY = {
+    "EN16": "7850",
+    "EN30B": "7850",
+    "1.2312": "7850",
+}
+
+#: A supplier's round-bar range for EN16, and both forms for EN30B so the
+#: shape choice is visible: a square part should buy square bar.
+LIVE_RANGES = [
+    ("EN16", StockForm.BAR_ROUND.value, "material:en16:round_bar", [60, 70, 80, 90, 100, 110, 120]),
+    ("EN30B", StockForm.BAR_ROUND.value, "material:en30b:round_bar", [60, 70, 80, 90]),
+    ("EN30B", StockForm.BAR_SQUARE.value, "material:en30b:square_bar", [40, 50, 55, 60, 70]),
 ]
 
 STOCK = [
@@ -144,7 +180,88 @@ def seed_reference_data(db) -> None:
         )
         print(f"  added {len(STOCK)} stock sizes")
 
+    seed_market(db)
     db.commit()
+
+
+def seed_market(db) -> None:
+    """Market sources, plus one recorded reading so the app has data to show.
+
+    The reading here is a PLACEHOLDER, marked as such in its own evidence
+    text. A real one comes from `scripts/refresh_market.py` fetching a page
+    the business has pointed it at — this exists only so the workspace is not
+    empty before that happens.
+    """
+    from scripts.refresh_market import SEED_SOURCES
+
+    if db.query(MarketSource).count() == 0:
+        # Off until somebody supplies a URL: an active source with nowhere to
+        # look just fails nightly and trains people to ignore the failures.
+        db.add_all(MarketSource(**spec, active=False) for spec in SEED_SOURCES)
+        db.flush()
+        print(f"  added {len(SEED_SOURCES)} market sources (all off until given a URL)")
+
+    for spec, form, series_key, sizes in LIVE_RANGES:
+        source = db.query(MarketSource).filter_by(series_key=series_key).first()
+        if source is None:
+            source = MarketSource(
+                series_key=series_key,
+                name=f"{spec} {form.replace('_', ' ')} — example supplier",
+                kind=MarketKind.MATERIAL_PRICE.value,
+                unit=MarketUnit.GBP_PER_KG.value,
+                basis=MarketBasis.RETAIL_ONLINE.value,
+                spec=spec,
+                stock_form=form,
+                target="the price per kilogram, and every size listed, in mm",
+                max_age_hours=168,
+                active=False,
+            )
+            db.add(source)
+            db.flush()
+
+        if db.query(MarketObservation).filter_by(series_key=series_key).count() == 0:
+            db.add(
+                MarketObservation(
+                    source_id=source.id,
+                    series_key=series_key,
+                    value=Decimal("2.40"),
+                    unit=MarketUnit.GBP_PER_KG.value,
+                    method=MarketMethod.MANUAL.value,
+                    basis=source.basis,
+                    confidence=0.95,
+                    evidence=(
+                        "PLACEHOLDER — seeded for development, not read from a "
+                        "supplier. Replace by running scripts/refresh_market.py."
+                    ),
+                    observed_at=utcnow(),
+                )
+            )
+
+        existing = {
+            Decimal(row.width_mm)
+            for row in db.query(StockSize).filter_by(spec=spec, stock_form=form)
+            if row.width_mm is not None
+        }
+        for size in sizes:
+            if Decimal(size) in existing:
+                continue
+            db.add(
+                StockSize(
+                    spec=spec,
+                    stock_form=form,
+                    length_mm=Decimal("3000"),
+                    width_mm=Decimal(size),
+                    thickness_mm=(Decimal(size) if form == StockForm.BAR_SQUARE.value else None),
+                    # Computed from the live price and the bar's own weight;
+                    # this is only the fallback if that ever goes missing.
+                    unit_cost=Decimal("0"),
+                    kerf_mm=Decimal("3"),
+                    density_kg_m3=Decimal(DENSITY[spec]),
+                    market_series_key=series_key,
+                    origin=MarketMethod.MANUAL.value,
+                )
+            )
+    db.flush()
 
 
 def seed_example(db) -> None:
@@ -269,6 +386,107 @@ def seed_example(db) -> None:
     )
     db.commit()
     print(f"  added example enquiry {enquiry.id} with part {part.id}")
+    seed_full_supply_example(db)
+
+
+def seed_full_supply_example(db) -> None:
+    """A turned part we buy the material for, so the sizing story is visible.
+
+    The first example is free-issue, which means it never exercises the part
+    of the system most likely to be wrong: how much bar to buy. This one does.
+    """
+    if db.query(Enquiry).filter(Enquiry.outlook_message_id == "seed-example-0002").first():
+        return
+
+    customer = db.query(Customer).filter(Customer.domain == "halden-power.example").first()
+    if customer is None:
+        customer = Customer(
+            name="Halden Power Systems",
+            domain="halden-power.example",
+            default_margin_pct=Decimal("35"),
+            default_lead_days=15,
+            is_material_supplied_default=False,
+            requires_cert=True,
+            notes="Full supply, always wants material certs with the delivery.",
+        )
+        db.add(customer)
+        db.flush()
+
+    enquiry = Enquiry(
+        customer_id=customer.id,
+        outlook_message_id="seed-example-0002",
+        subject="RFQ — oil feed plate 67980 iss 1, 15 off",
+        body_text=(
+            "Hi,\n\nPlease quote 15 off drawing 67980 issue 1. Material and "
+            "cert to be supplied by yourselves.\n\nRegards,\nPaul"
+        ),
+        sender_email="purchasing@halden-power.example",
+        received_at=utcnow(),
+        tagged_at=utcnow(),
+        status="classified",
+    )
+    db.add(enquiry)
+    db.flush()
+
+    part = Part(
+        enquiry_id=enquiry.id,
+        drawing_number="67980",
+        revision="1",
+        description="Oil feed plate",
+        quantity=15,
+        quantity_source="email",
+        material="EN16",
+        tightest_tolerance="+0.000/-0.025",
+        # Round about one axis: 85 across, 20 thick.
+        envelope_x=Decimal("85"),
+        envelope_y=Decimal("85"),
+        envelope_z=Decimal("20"),
+        is_rotational=True,
+        job_type=JobType.FULL_SUPPLY.value,
+        extraction_confidence={
+            "drawing_number": 0.98,
+            "material": 0.95,
+            "quantity": 0.97,
+            "tightest_tolerance": 0.91,
+        },
+        process_mix=[Process.CNC_TURN.value, Process.CNC_MILL.value],
+    )
+    db.add(part)
+    db.flush()
+
+    db.add_all(
+        [
+            Operation(
+                part_id=part.id,
+                op_number=10,
+                process=Process.CNC_TURN.value,
+                description="Turn OD, face both sides, bore centre",
+                set_time_mins=Decimal("60"),
+                run_time_mins_per_unit=Decimal("11"),
+                time_source=TimeSource.CALCULATOR.value,
+            ),
+            Operation(
+                part_id=part.id,
+                op_number=20,
+                process=Process.CNC_MILL.value,
+                description="Mill feed slots and drill fixing holes",
+                set_time_mins=Decimal("40"),
+                run_time_mins_per_unit=Decimal("9"),
+                time_source=TimeSource.HISTORICAL_ESTIMATE.value,
+            ),
+            Operation(
+                part_id=part.id,
+                op_number=30,
+                process=Process.QC.value,
+                description="Inspect, record bore size, issue cert",
+                set_time_mins=Decimal("15"),
+                run_time_mins_per_unit=Decimal("3"),
+                time_source=TimeSource.MANUAL.value,
+            ),
+        ]
+    )
+    db.commit()
+    print(f"  added full-supply example enquiry {enquiry.id} with part {part.id}")
 
 
 def main() -> int:
