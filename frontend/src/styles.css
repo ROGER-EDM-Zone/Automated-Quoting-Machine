@@ -267,3 +267,72 @@ tr.market-stale, tr.market-last_refresh_failed { background: #fffaf0; }
   border-radius: 999px; font-weight: 600;
 }
 .pill-warn { background: var(--warn-bg); color: var(--warn); }
+
+/* --------------------------------------------------------------------------
+   Working lists
+   --------------------------------------------------------------------------
+   The tabs are the first thing on the screen, so they carry state as well as
+   navigation: a Needs attention tab holding work looks different from an empty
+   one, and Ready to send is the only tab that reads as "go", because sending
+   is the only irreversible thing on this screen.
+
+   Guarded by scripts/check-styles.mjs — the class names are built from data,
+   so a renamed lane would silently drop the styling rather than break.
+   -------------------------------------------------------------------------- */
+.lane-tabs {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lane-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+  width: auto;
+}
+.lane-tab:hover { background: var(--surface); color: var(--text); }
+.lane-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.lane-tab.selected {
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom: 1px solid var(--surface);
+  color: var(--text);
+  font-weight: 650;
+}
+
+.lane-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eceff2;
+  color: var(--muted);
+}
+
+/* Urgency, by lane. Only two lanes earn a colour: the one holding problems
+   and the one holding quotes about to leave the building. */
+.lane-needs_attention .lane-count { background: var(--block-bg); color: var(--block); }
+.lane-needs_attention.selected { border-top: 2px solid var(--block); }
+
+.lane-ready_to_send .lane-count { background: var(--ok-bg); color: var(--ok); }
+.lane-ready_to_send.selected { border-top: 2px solid var(--ok); }
+
+.lane-awaiting_feedback .lane-count { background: var(--info-bg); color: var(--info); }
+.lane-closed .lane-label { color: var(--muted); }
+.lane-coming_in .lane-count,
+.lane-to_check .lane-count { background: #eceff2; color: var(--muted); }

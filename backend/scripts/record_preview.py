@@ -33,6 +33,7 @@ OUT = Path(__file__).resolve().parents[2] / "frontend" / "demo" / "fixtures.json
 
 #: Paths that do not depend on which rows exist.
 STATIC_PATHS = [
+    "/queue/lanes",
     "/queue?sort=flags&include_closed=false",
     "/queue?sort=age&include_closed=false",
     "/queue?sort=value&include_closed=false",
@@ -70,8 +71,14 @@ def main() -> int:
         print("Nothing to record — seed the database first (scripts.seed --example).")
         return 1
 
+    lanes = [row["lane"] for row in TestClient(app).get("/queue/lanes").json()]
+
     paths = [
         *STATIC_PATHS,
+        # One recording per tab, and per sort within the default tab, so the
+        # preview's tabs behave like the real ones rather than 404ing.
+        *(f"/queue?sort=flags&lane={lane}" for lane in lanes),
+        *(f"/queue?sort={sort}&lane=needs_attention" for sort in ("age", "value", "confidence")),
         *(f"/enquiries/{i}" for i in enquiry_ids),
         *(f"/customers/{i}" for i in customer_ids),
         *(f"/search/similar?part_id={i}" for i in part_ids),

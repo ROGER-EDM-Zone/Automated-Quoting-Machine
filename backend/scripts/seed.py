@@ -25,6 +25,8 @@ from app.db import SessionLocal, init_db
 from app.enums import (
     AdjustmentType,
     AttachmentKind,
+    FlagCategory,
+    FlagSeverity,
     JobType,
     MarketBasis,
     MarketKind,
@@ -39,6 +41,7 @@ from app.models import (
     Attachment,
     Customer,
     Enquiry,
+    Flag,
     MarketObservation,
     MarketSource,
     Operation,
@@ -487,6 +490,72 @@ def seed_full_supply_example(db) -> None:
     )
     db.commit()
     print(f"  added full-supply example enquiry {enquiry.id} with part {part.id}")
+    seed_worklists(db)
+
+
+#: Enough enquiries, in enough states, that the working lists are not all
+#: empty on a fresh install. Subjects only — these carry no parts and no
+#: prices, because their whole job is to show that the tabs sort work by what
+#: has to happen to it next.
+WORKLIST_EXAMPLES = [
+    ("received", "RFQ — 12 off spacer rings, drawing SP-220", None),
+    ("classified", "Quote request — manifold block, 2 off", None),
+    ("approved", "RFQ — shaft collar 8891, 40 off", None),
+    (
+        "approved",
+        "RFQ — pump housing PH-14, 6 off",
+        "Customer has not confirmed whether the bore is reamed or ground. "
+        "Priced as ground; needs confirming before this goes out.",
+    ),
+    ("sent", "RFQ — guide rail set, 4 off", None),
+    ("won", "RFQ — clamp plate 5512, 25 off", None),
+    ("lost", "RFQ — bearing carrier BC-9, 3 off", None),
+    (
+        "needs_attention",
+        "Fwd: drawing for quote (no drawing attached)",
+        "The email says a drawing is attached and none was. Nothing can be "
+        "read until somebody asks for it.",
+    ),
+]
+
+
+def seed_worklists(db) -> None:
+    """Spread some enquiries across the working lists.
+
+    Without this every tab but one is empty on a fresh install, which makes
+    the screen look broken rather than quiet.
+    """
+    if db.query(Enquiry).filter(Enquiry.outlook_message_id.like("seed-worklist-%")).first():
+        return
+
+    customer = db.query(Customer).filter(Customer.domain == "bracken-eng.example").first()
+    added = 0
+    for index, (status, subject, blocker) in enumerate(WORKLIST_EXAMPLES, start=1):
+        enquiry = Enquiry(
+            customer_id=customer.id if customer else None,
+            outlook_message_id=f"seed-worklist-{index:04d}",
+            subject=subject,
+            body_text="Seeded example — no drawing, no price, no real customer.",
+            sender_email="buyer@bracken-eng.example",
+            received_at=utcnow() - timedelta(hours=index * 7),
+            tagged_at=utcnow() - timedelta(hours=index * 7),
+            status=status,
+        )
+        db.add(enquiry)
+        db.flush()
+        if blocker:
+            db.add(
+                Flag(
+                    enquiry_id=enquiry.id,
+                    category=FlagCategory.COMMERCIAL_JUDGEMENT.value,
+                    severity=FlagSeverity.BLOCK.value,
+                    message=blocker,
+                )
+            )
+        added += 1
+
+    db.commit()
+    print(f"  added {added} enquiries across the working lists")
 
 
 def main() -> int:

@@ -17,10 +17,14 @@ import pytest
 os.environ.setdefault("AQM_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("AQM_STORAGE_BACKEND", "local")
 
+from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
-from app.db import Base  # noqa: E402
+from app.config import get_settings  # noqa: E402
+from app.db import Base, get_db  # noqa: E402
+from app.deps import get_ai, get_storage_dep  # noqa: E402
 from app.enums import (  # noqa: E402
     AdjustmentType,
     AttachmentKind,
@@ -30,6 +34,7 @@ from app.enums import (  # noqa: E402
     StockForm,
     TimeSource,
 )
+from app.main import app  # noqa: E402
 from app.models import (  # noqa: E402
     Attachment,
     Customer,
@@ -41,6 +46,8 @@ from app.models import (  # noqa: E402
     StockSize,
     utcnow,
 )
+from app.services.ai import StubAIClient  # noqa: E402
+from app.services.storage import LocalStorage  # noqa: E402
 
 
 @pytest.fixture
@@ -238,3 +245,44 @@ def priceable_part(db, enquiry, drawing_attachment, rates):
     db.commit()
     db.refresh(part)
     return part
+
+
+@pytest.fixture
+def api(tmp_path, monkeypatch):
+    """A wired-up client: fresh database, local storage, stubbed AI.
+
+    Lives here rather than beside one test module because more than one suite
+    needs a running app to test against.
+    """
+    get_settings.cache_clear()
+    monkeypatch.setenv("AQM_STORAGE_ROOT", str(tmp_path / "blobs"))
+    monkeypatch.setenv("AQM_AUTH_REQUIRED", "false")
+    settings = get_settings()
+
+    # StaticPool: the TestClient serves requests on another thread, and a
+    # second connection to :memory: would be a second, empty database.
+    engine = create_engine(
+        "sqlite:///:memory:",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    session = Session()
+    storage = LocalStorage(settings.storage_root)
+    stub = StubAIClient()
+
+    app.dependency_overrides[get_db] = lambda: session
+    app.dependency_overrides[get_ai] = lambda: stub
+    app.dependency_overrides[get_storage_dep] = lambda: storage
+
+    client = TestClient(app)
+    client.headers["X-User-Email"] = "estimator@shop.example"
+    try:
+        yield client, session, stub, storage
+    finally:
+        app.dependency_overrides.clear()
+        session.close()
+        engine.dispose()
+        get_settings.cache_clear()

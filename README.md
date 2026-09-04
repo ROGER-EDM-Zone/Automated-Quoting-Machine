@@ -208,16 +208,43 @@ backend/
       approval.py       stage 6   rates.py       no default rate, anywhere
       ai.py             the single seam for every AI call
       graph.py          Microsoft Graph: reads mail, creates drafts, never sends
+      lanes.py          which working list an enquiry belongs in
       market.py         live prices and live stock sizes, with their receipts
       market_fetch.py   fetch a page; never guess when it cannot be reached
     prompts/            extraction, classification, note interpretation
     api/                the endpoints
-  tests/                224 tests
+  tests/                274 tests
   scripts/seed.py       development data (placeholders only)
   scripts/refresh_market.py   put this on a nightly schedule
 frontend/               React + TypeScript estimator workspace
 outlook-addin/          Office.js triage card — read-only by design
 ```
+
+---
+
+## Working lists
+
+The queue answers "what is in the system". An estimator opens the screen
+asking "what do I have to do next", which is a different question — and one
+list sorted by age silently mixes an enquiry that is blocked with one that is
+finished and waiting on the customer.
+
+So the queue is six lists: **Needs attention · Coming in · To check · Ready to
+send · Awaiting feedback · Won / lost**. Two rules make them worth trusting
+rather than decorative:
+
+* **Every enquiry is in exactly one list.** The lanes are exhaustive and
+  mutually exclusive, and a status the code has not been taught about goes to
+  Needs attention rather than quietly landing somewhere nobody reads. An
+  enquiry in no list is an enquiry nobody chases.
+* **Trouble outranks progress.** An approved quote with an unresolved blocking
+  flag leaves Ready to send and goes to Needs attention. A blocked quote
+  sitting in the list people send from is exactly the one that gets sent by
+  accident.
+
+The lane and the tab counts are both computed by `services/lanes.py` from the
+same rows, so a badge saying three over a list of two is not possible — there
+is a test for it.
 
 ---
 

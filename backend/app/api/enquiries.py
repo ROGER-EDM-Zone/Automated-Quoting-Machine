@@ -18,6 +18,7 @@ from app.pricing import PricingError
 from app.schemas import (
     EnquiryOut,
     FlagOut,
+    LaneCountOut,
     PriceRequest,
     QueueItemOut,
     QuoteOut,
@@ -26,6 +27,14 @@ from app.schemas import (
 from app.services.approval import unresolved_blockers
 from app.services.classification import classify_enquiry, duplicate_check
 from app.services.extraction import extract_enquiry
+from app.services.lanes import (
+    LANE_HINTS,
+    LANE_LABELS,
+    LANE_ORDER,
+    Lane,
+    lane_for,
+    statuses_in,
+)
 from app.services.quoting import (
     NotPriceable,
     ambiguous_cost_paths,
@@ -160,11 +169,23 @@ def get_queue(
     status_filter: list[str] | None = Query(default=None, alias="status"),
     sort: str = Query(default="age", pattern="^(age|value|flags|confidence)$"),
     include_closed: bool = False,
+    lane: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
 ):
-    """Triage list. Must cope with many enquiries landing at once."""
+    """Triage list. Must cope with many enquiries landing at once.
+
+    With `lane`, this is one working list — the answer to "what do I have to
+    do next" rather than "what is in the system". The lane is decided by
+    `services.lanes`, and asking for a closed lane returns closed enquiries
+    regardless of `include_closed`: a filter that silently empties the tab the
+    user just clicked is worse than no tab.
+    """
+    wanted_lane = _parse_lane(lane)
+
     stmt = select(Enquiry)
-    if status_filter:
+    if wanted_lane is not None:
+        stmt = stmt.where(Enquiry.status.in_(statuses_in(wanted_lane)))
+    elif status_filter:
         stmt = stmt.where(Enquiry.status.in_(status_filter))
     elif not include_closed:
         stmt = stmt.where(
@@ -175,6 +196,11 @@ def get_queue(
     enquiries = list(db.scalars(stmt.order_by(Enquiry.received_at.desc())).all())
 
     items = [_queue_item(db, enquiry) for enquiry in enquiries]
+    if wanted_lane is not None:
+        # `statuses_in` only narrowed the query. A blocking flag can pull an
+        # enquiry out of any lane into Needs attention, so the final say is
+        # the same function the tab counts use.
+        items = [item for item in items if item.lane == wanted_lane.value]
 
     sorters = {
         "age": lambda i: -i.age_hours,
@@ -216,6 +242,7 @@ def _queue_item(db: Session, enquiry: Enquiry) -> QueueItemOut:
     now = datetime.now(UTC)
 
     customer_name = enquiry.customer.name if enquiry.customer is not None else None
+    blocking = sum(1 for f in flag_rows if f.severity == FlagSeverity.BLOCK.value)
 
     return QueueItemOut(
         enquiry_id=enquiry.id,
@@ -231,9 +258,73 @@ def _queue_item(db: Session, enquiry: Enquiry) -> QueueItemOut:
         quote_id=quote.id if quote else None,
         quote_value=quote.quote_value if quote else None,
         flag_count=len(flag_rows),
-        blocking_flag_count=sum(1 for f in flag_rows if f.severity == FlagSeverity.BLOCK.value),
+        blocking_flag_count=blocking,
         lowest_confidence=min(confidences) if confidences else None,
         due_date=enquiry.due_date,
+        lane=lane_for(enquiry.status, blocking_flag_count=blocking).value,
+    )
+
+
+def _parse_lane(lane: str | None) -> Lane | None:
+    """Turn a lane name from the query string into a lane, or say why not."""
+    if lane is None:
+        return None
+    try:
+        return Lane(lane)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown lane '{lane}'. Expected one of: "
+            + ", ".join(item.value for item in LANE_ORDER),
+        ) from None
+
+
+@router.get("/queue/lanes", response_model=list[LaneCountOut])
+def get_lane_counts(
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    """How much is in each working list.
+
+    Counted from the same rows the tabs show, deliberately: a badge that says
+    three over a list of two is the kind of small dishonesty that stops people
+    trusting the whole screen. Every enquiry is counted exactly once, so these
+    always total the number of enquiries in the system.
+    """
+    counts = dict.fromkeys(LANE_ORDER, 0)
+    for enquiry in db.scalars(select(Enquiry)):
+        counts[lane_for(enquiry.status, blocking_flag_count=_blocking_count(db, enquiry))] += 1
+
+    return [
+        LaneCountOut(
+            lane=lane.value,
+            label=LANE_LABELS[lane],
+            hint=LANE_HINTS[lane],
+            count=counts[lane],
+        )
+        for lane in LANE_ORDER
+    ]
+
+
+def _blocking_count(db: Session, enquiry: Enquiry) -> int:
+    """Unresolved blocking flags anywhere on this enquiry."""
+    part_ids = [p.id for p in enquiry.parts]
+    quote_ids = [q.id for q in enquiry.quotes]
+    conditions = [Flag.enquiry_id == enquiry.id]
+    if part_ids:
+        conditions.append(Flag.part_id.in_(part_ids))
+    if quote_ids:
+        conditions.append(Flag.quote_id.in_(quote_ids))
+    return len(
+        list(
+            db.scalars(
+                select(Flag).where(
+                    Flag.resolved.is_(False),
+                    Flag.severity == FlagSeverity.BLOCK.value,
+                    or_(*conditions),
+                )
+            ).all()
+        )
     )
 
 

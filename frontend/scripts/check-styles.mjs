@@ -74,6 +74,36 @@ for (const status of MARKET_STATUSES) {
   }
 }
 
+// Working lists. Must match LaneName in src/lib/types.ts and Lane in
+// app/services/lanes.py — a lane whose tab has no rule is invisible state.
+const LANES = [
+  "needs_attention",
+  "coming_in",
+  "to_check",
+  "ready_to_send",
+  "awaiting_feedback",
+  "closed",
+];
+for (const lane of LANES) {
+  if (!css.includes(`.lane-${lane}`)) {
+    failures.push(
+      `No CSS rule for .lane-${lane}. Every working list needs its own tab ` +
+        `styling, or the tabs read as six identical links.`,
+    );
+  }
+}
+
+// The two lanes that carry consequence must not look like the rest.
+for (const lane of ["needs_attention", "ready_to_send"]) {
+  const block = css.match(new RegExp(`\\.lane-${lane}[^{]*\\{[^}]*\\}`, "g"))?.join("") ?? "";
+  if (!/background|border/.test(block)) {
+    failures.push(
+      `.lane-${lane} must carry a background or border. Blocked work and ` +
+        `quotes about to be sent are the two things worth seeing at a glance.`,
+    );
+  }
+}
+
 if (failures.length) {
   console.error("Style guard failed:\n" + failures.map((f) => `  - ${f}`).join("\n"));
   process.exit(1);
@@ -81,5 +111,5 @@ if (failures.length) {
 console.log(
   `Style guard passed: ${TIME_SOURCES.length} time sources, ` +
     `${PRICE_STATES.length} price states, ${MARKET_STATUSES.length} market ` +
-    `statuses and .unread all styled.`,
+    `statuses, ${LANES.length} lanes and .unread all styled.`,
 );

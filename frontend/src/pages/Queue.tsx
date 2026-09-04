@@ -1,11 +1,25 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-import type { QueueItem } from "../lib/types";
+import type { LaneCount, LaneName, QueueItem } from "../lib/types";
 import { age, dateTime, money, processLabel } from "../lib/format";
 import { Card, ErrorBanner, StatusBadge } from "../components/Primitives";
 
 type Sort = "age" | "value" | "flags" | "confidence";
+
+/**
+ * What an empty lane means. "Nothing waiting" is ambiguous — an empty Needs
+ * attention is good news and an empty Ready to send is not the same news at
+ * all, so each lane says its own thing.
+ */
+const EMPTY_MESSAGES: Record<LaneName, string> = {
+  needs_attention: "Nothing is blocked. Everything is moving.",
+  coming_in: "No new enquiries being read right now.",
+  to_check: "Nothing waiting to be checked.",
+  ready_to_send: "Nothing approved and waiting to go out.",
+  awaiting_feedback: "No quotes out with customers.",
+  closed: "No won or lost jobs recorded yet.",
+};
 
 const SORT_LABELS: Record<Sort, string> = {
   age: "Oldest first",
@@ -21,10 +35,25 @@ interface PollResult {
   failed: string[];
 }
 
+/**
+ * The queue, split into the lists an estimator actually works.
+ *
+ * One sorted list answers "what is in the system". It does not answer "what
+ * do I have to do next", which is the question people open this screen with —
+ * and mixing a blocked enquiry in with one that is finished and waiting on
+ * the customer is how quotes get forgotten.
+ *
+ * The lanes and their counts are decided on the server, so a tab's badge and
+ * its contents cannot disagree.
+ */
 export default function Queue() {
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [lanes, setLanes] = useState<LaneCount[]>([]);
+  const [lane, setLane] = useState<LaneName>(
+    // Come back to the list you were working, not to the top of the pile.
+    (localStorage.getItem("aqm.lane") as LaneName | null) ?? "needs_attention",
+  );
   const [sort, setSort] = useState<Sort>("flags");
-  const [includeClosed, setIncludeClosed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
@@ -34,11 +63,31 @@ export default function Queue() {
   useEffect(() => {
     setLoading(true);
     api
-      .get<QueueItem[]>(`/queue?sort=${sort}&include_closed=${includeClosed}`)
+      .get<QueueItem[]>(`/queue?sort=${sort}&lane=${lane}`)
       .then(setItems)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [sort, includeClosed, reloadKey]);
+  }, [sort, lane, reloadKey]);
+
+  // Counts reload alongside the rows: acting on an enquiry moves it between
+  // lanes, and a stale badge is worse than no badge.
+  useEffect(() => {
+    api
+      .get<LaneCount[]>("/queue/lanes")
+      .then(setLanes)
+      .catch((e) => setError(e.message));
+  }, [reloadKey, lane]);
+
+  const chooseLane = (next: LaneName) => {
+    setLane(next);
+    try {
+      localStorage.setItem("aqm.lane", next);
+    } catch {
+      // A browser refusing storage is not a reason to fail to change tab.
+    }
+  };
+
+  const current = lanes.find((l) => l.lane === lane);
 
   /** Pull the mailbox on demand, rather than waiting for a notification. */
   const checkMailbox = async () => {
@@ -68,9 +117,24 @@ export default function Queue() {
     <>
       <ErrorBanner error={error} />
       {pollNotice && <div className="notice">{pollNotice}</div>}
+      <nav className="lane-tabs" aria-label="Working lists">
+        {lanes.map((entry) => (
+          <button
+            key={entry.lane}
+            className={`lane-tab lane-${entry.lane}${entry.lane === lane ? " selected" : ""}`}
+            aria-current={entry.lane === lane ? "page" : undefined}
+            onClick={() => chooseLane(entry.lane)}
+          >
+            <span className="lane-label">{entry.label}</span>
+            {/* A zero is shown, not hidden: "nothing to send" is information. */}
+            <span className="lane-count">{entry.count}</span>
+          </button>
+        ))}
+      </nav>
+
       <Card
-        title="Triage queue"
-        hint={`${items.length} enquiries`}
+        title={current?.label ?? "Queue"}
+        hint={current?.hint}
         actions={
           <div className="button-row">
             <button className="primary" onClick={() => void checkMailbox()} disabled={checking}>
@@ -81,22 +145,13 @@ export default function Queue() {
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-            <label style={{ display: "flex", gap: 6, alignItems: "center", margin: 0 }}>
-              <input
-                type="checkbox"
-                checked={includeClosed}
-                onChange={(e) => setIncludeClosed(e.target.checked)}
-                style={{ width: "auto" }}
-              />
-              Include sent and closed
-            </label>
           </div>
         }
       >
         {loading ? (
           <p className="empty">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="empty">Nothing waiting.</p>
+          <p className="empty">{EMPTY_MESSAGES[lane]}</p>
         ) : (
           <table>
             <thead>

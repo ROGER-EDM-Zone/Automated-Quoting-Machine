@@ -10,19 +10,10 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.config import get_settings
-from app.db import Base, get_db
-from app.deps import get_ai, get_storage_dep
 from app.enums import AttachmentKind, EnquiryStatus, JobType, Process, QuoteStatus, TimeSource
-from app.main import app
 from app.models import Attachment, Enquiry, Flag, utcnow
-from app.services.ai import StubAIClient
-from app.services.storage import LocalStorage, attachment_key, content_hash
+from app.services.storage import attachment_key, content_hash
 
 
 def _one_page_pdf() -> bytes:
@@ -117,43 +108,6 @@ def _classification_payload(**overrides) -> dict:
     }
     payload.update(overrides)
     return payload
-
-
-@pytest.fixture
-def api(tmp_path, monkeypatch):
-    """A wired-up client: fresh database, local storage, stubbed AI."""
-    get_settings.cache_clear()
-    monkeypatch.setenv("AQM_STORAGE_ROOT", str(tmp_path / "blobs"))
-    monkeypatch.setenv("AQM_AUTH_REQUIRED", "false")
-    settings = get_settings()
-
-    # StaticPool: the TestClient serves requests on another thread, and a
-    # second connection to :memory: would be a second, empty database.
-    engine = create_engine(
-        "sqlite:///:memory:",
-        future=True,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    session = Session()
-    storage = LocalStorage(settings.storage_root)
-    stub = StubAIClient()
-
-    app.dependency_overrides[get_db] = lambda: session
-    app.dependency_overrides[get_ai] = lambda: stub
-    app.dependency_overrides[get_storage_dep] = lambda: storage
-
-    client = TestClient(app)
-    client.headers["X-User-Email"] = "estimator@shop.example"
-    try:
-        yield client, session, stub, storage
-    finally:
-        app.dependency_overrides.clear()
-        session.close()
-        engine.dispose()
-        get_settings.cache_clear()
 
 
 @pytest.fixture

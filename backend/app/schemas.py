@@ -297,6 +297,18 @@ class QueueItemOut(BaseModel):
     #: Lowest field confidence anywhere on the enquiry, for sorting.
     lowest_confidence: float | None = None
     due_date: date | None = None
+    #: The one working list this enquiry belongs in. Computed on the server so
+    #: a tab's count and its contents cannot disagree.
+    lane: str
+
+
+class LaneCountOut(BaseModel):
+    """One tab: what it is called, what it means, and how much is in it."""
+
+    lane: str
+    label: str
+    hint: str
+    count: int
 
 
 # --------------------------------------------------------------------------

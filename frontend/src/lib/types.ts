@@ -300,6 +300,23 @@ export interface QueueItem {
   blocking_flag_count: number;
   lowest_confidence: number | null;
   due_date: string | null;
+  /** The one working list this enquiry is in. Decided by the server. */
+  lane: LaneName;
+}
+
+export type LaneName =
+  | "needs_attention"
+  | "coming_in"
+  | "to_check"
+  | "ready_to_send"
+  | "awaiting_feedback"
+  | "closed";
+
+export interface LaneCount {
+  lane: LaneName;
+  label: string;
+  hint: string;
+  count: number;
 }
 
 export interface Rate {
