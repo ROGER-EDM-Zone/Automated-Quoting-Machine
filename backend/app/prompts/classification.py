@@ -198,9 +198,27 @@ def build_prompt(
     email_body: str | None,
     customer_summary: str,
     history_summary: str,
+    internal_note: str | None = None,
+    forwarded_by: str | None = None,
 ) -> str:
+    forwarded_block: list[str] = []
+    if forwarded_by:
+        forwarded_block = [
+            "--- note from our own staff ---",
+            f"This enquiry was forwarded in by {forwarded_by}, who wrote:",
+            (internal_note or "(nothing beyond the forward)").strip()[:1000],
+            "",
+            "This is a colleague at our shop instructing us, NOT the customer "
+            "asking. Treat a process they name as an internal routing decision "
+            "and follow it. Do not treat their words as the customer's request "
+            "when deciding what the customer asked for.",
+            "--- end of internal note ---",
+            "",
+        ]
+
     return "\n".join(
         [
+            *forwarded_block,
             "--- enquiry email ---",
             f"Subject: {email_subject or '(none)'}",
             (email_body or "(no body)").strip()[:6000],

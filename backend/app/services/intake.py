@@ -35,6 +35,50 @@ _SPREADSHEET_EXTENSIONS = {".xls", ".xlsx", ".xlsm", ".csv"}
 #: Inline signature images and logos that are not drawings.
 _NOISE = re.compile(r"(image\d{3,}|logo|signature|footer|banner)", re.I)
 
+#: Consumer and ISP domains. Real customers do send from these — one of EDM
+#: Zone's does — but the domain identifies the provider, not the company, so
+#: matching a customer on it would map every other BT subscriber to them too.
+#: Mail from these is left unmatched for a human to attach to a customer.
+GENERIC_EMAIL_DOMAINS = frozenset(
+    {
+        "aol.com",
+        "btconnect.com",
+        "btinternet.com",
+        "gmail.com",
+        "googlemail.com",
+        "hotmail.co.uk",
+        "hotmail.com",
+        "icloud.com",
+        "live.co.uk",
+        "live.com",
+        "mail.com",
+        "me.com",
+        "outlook.com",
+        "protonmail.com",
+        "sky.com",
+        "talktalk.net",
+        "virginmedia.com",
+        "yahoo.co.uk",
+        "yahoo.com",
+    }
+)
+
+#: "From:" lines inside a forwarded body, e.g.
+#:     From: Kirsty Bruce <KBruce@act-group.co.uk>
+#:     From: bloochip@btinternet.com <bloochip@btinternet.com>
+_FORWARD_FROM = re.compile(
+    r"^\s*From:\s*(?P<name>[^<\n]*?)\s*(?:<(?P<bracketed>[^>\n]+)>|(?P<bare>[\w.+-]+@[\w.-]+))",
+    re.I | re.M,
+)
+
+
+@dataclass
+class ForwardedOrigin:
+    """Who actually sent an RFQ that reached us via an internal forward."""
+
+    email: str
+    name: str | None = None
+
 
 @dataclass
 class PollResult:
@@ -82,15 +126,67 @@ def classify_attachment(filename: str, content_type: str | None, size_bytes: int
     return AttachmentKind.OTHER.value
 
 
+def parse_forwarded_origin(
+    body_text: str | None, *, internal_domains: set[str]
+) -> ForwardedOrigin | None:
+    """Find the original sender inside a forwarded email chain.
+
+    At EDM Zone a large share of RFQs reach the sales mailbox as a forward from
+    a colleague — "RFQ to process Wire EDM" over the top of the customer's
+    email. Matching the customer on the envelope sender would file those under
+    our own company, so the chain is read for the first sender who is not one
+    of us.
+    """
+    if not body_text:
+        return None
+
+    for match in _FORWARD_FROM.finditer(body_text):
+        address = (match.group("bracketed") or match.group("bare") or "").strip()
+        if "@" not in address:
+            continue
+        domain = address.rsplit("@", 1)[1].lower().strip(">.,;")
+        if domain in internal_domains:
+            # A forward of a forward: keep looking for the outside party.
+            continue
+        name = (match.group("name") or "").strip(" \"'\t") or None
+        # A name that is just the address again tells us nothing.
+        if name and name.lower() == address.lower():
+            name = None
+        return ForwardedOrigin(email=address, name=name)
+    return None
+
+
+def _forwarder_note(body_text: str | None) -> str | None:
+    """The colleague's own words above a forwarded chain.
+
+    "RFQ to process Wire EDM" is a routing instruction from someone who knows
+    the shop, and is worth more to the classifier than most of the email under
+    it — but it is ours, not the customer's, and is stored separately so the
+    two are never confused.
+    """
+    if not body_text:
+        return None
+    match = _FORWARD_FROM.search(body_text)
+    head = body_text[: match.start()] if match else body_text
+    # Drop the separator rule some clients put above the chain.
+    head = re.sub(r"[_\-]{5,}", " ", head)
+    cleaned = " ".join(head.split())
+    return cleaned[:500] or None
+
+
 def resolve_customer(db: Session, sender_email: str | None) -> Customer | None:
     """Match a sender to a customer by email domain.
 
     No fuzzy matching on company names: quoting one customer's enquiry against
     another's standing margin is a mistake worth avoiding by being strict.
+    Generic ISP domains never match, because they identify the mail provider
+    rather than the company.
     """
     if not sender_email or "@" not in sender_email:
         return None
     domain = sender_email.rsplit("@", 1)[1].lower()
+    if domain in GENERIC_EMAIL_DOMAINS:
+        return None
     return db.scalars(select(Customer).where(Customer.domain == domain)).first()
 
 
@@ -125,13 +221,40 @@ def ingest_message(
             ),
         )
 
-    customer = resolve_customer(db, message.sender_email)
+    # An RFQ forwarded by a colleague carries our address on the envelope. The
+    # customer is inside the chain, and quoting the enquiry against our own
+    # company would be worse than not matching at all.
+    settings = get_settings()
+    internal_domains = settings.own_domains()
+    sender_email = message.sender_email
+    forwarded_by: str | None = None
+    internal_note: str | None = None
+
+    sender_domain = (
+        sender_email.rsplit("@", 1)[1].lower() if sender_email and "@" in sender_email else None
+    )
+    if sender_domain and sender_domain in internal_domains:
+        origin = parse_forwarded_origin(message.body_text, internal_domains=internal_domains)
+        if origin is not None:
+            forwarded_by = sender_email
+            sender_email = origin.email
+            internal_note = _forwarder_note(message.body_text)
+            logger.info(
+                "Message %s was forwarded by %s; treating %s as the customer",
+                message.message_id,
+                forwarded_by,
+                sender_email,
+            )
+
+    customer = resolve_customer(db, sender_email)
     enquiry = Enquiry(
         customer_id=customer.id if customer else None,
         outlook_message_id=message.message_id,
         subject=message.subject,
         body_text=message.body_text,
-        sender_email=message.sender_email,
+        sender_email=sender_email,
+        forwarded_by=forwarded_by,
+        internal_note=internal_note,
         received_at=message.received_at or utcnow(),
         tagged_at=utcnow(),
         status=EnquiryStatus.RECEIVED.value,

@@ -69,12 +69,24 @@ class Settings(BaseSettings):
     graph_quoting_mailbox: str | None = None
     #: Only mail carrying this Outlook category enters the pipeline.
     graph_rfq_category: str = "RFQ"
+    #: Our own domains. Mail from these is treated as internally forwarded, so
+    #: the real customer is looked for inside the forwarded chain rather than
+    #: the company being recorded as its own customer. The quoting mailbox's
+    #: own domain is always included.
+    internal_email_domains: list[str] = Field(default_factory=list)
     graph_webhook_client_state: str | None = None
 
     # --- Auth (Entra ID SSO) ---
     auth_required: bool = False
     entra_tenant_id: str | None = None
     entra_audience: str | None = None
+
+    def own_domains(self) -> set[str]:
+        """Domains that count as internal, including the mailbox's own."""
+        domains = {d.strip().lower().lstrip("@") for d in self.internal_email_domains if d.strip()}
+        if self.graph_quoting_mailbox and "@" in self.graph_quoting_mailbox:
+            domains.add(self.graph_quoting_mailbox.rsplit("@", 1)[1].lower())
+        return domains
 
     def threshold_for(self, field_name: str) -> float:
         """Confidence floor for one extracted field."""

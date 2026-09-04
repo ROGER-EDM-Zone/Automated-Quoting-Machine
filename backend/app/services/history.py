@@ -269,10 +269,19 @@ def problem_matches(db: Session, part: Part, *, limit: int = 5) -> list[Match]:
 # --------------------------------------------------------------------------
 # The anchor
 # --------------------------------------------------------------------------
+#: Ordered most specific first. EDM Zone's own quote numbers are `Op#####`
+#: and `COM#####`; those beat a bare number elsewhere in the mail, which is
+#: far more often a purchase order than a quote.
 _REFERENCE_PATTERNS = (
+    re.compile(r"\b(Op\d{4,7})\b", re.I),
+    re.compile(r"\b(COM\d{4,7})\b", re.I),
+    re.compile(
+        r"\bquote\s*(?:ref(?:erence)?|no\.?|number|#)?\s*:?\s*(Op\d{4,7}|COM\d{4,7}|Q?\d{3,7})\b",
+        re.I,
+    ),
     re.compile(r"\b(?:previous\s+)?quote\s*(?:no\.?|number|#)?\s*(\d{3,7})\b", re.I),
     re.compile(r"\bjob\s*(?:no\.?|number|#)?\s*(\d{3,7})\b", re.I),
-    re.compile(r"\bq[-/]?(\d{3,7})\b", re.I),
+    re.compile(r"\b(Q\d{4,7})\b"),
     re.compile(r"\byour\s+ref(?:erence)?\s*:?\s*(\d{3,7})\b", re.I),
 )
 

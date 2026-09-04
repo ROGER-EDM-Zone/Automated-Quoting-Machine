@@ -104,6 +104,14 @@ class Enquiry(Base, TimestampMixin):
     )
     #: e.g. "previous quote 6123" — the anchor for repricing from history.
     customer_reference: Mapped[str | None] = mapped_column(String(200))
+    #: Set when the RFQ reached us as an internal forward. Holds the colleague
+    #: who forwarded it; sender_email then holds the actual customer, so
+    #: customer matching and the reply both go to the right party.
+    forwarded_by: Mapped[str | None] = mapped_column(String(320))
+    #: What the forwarder wrote above the chain — "RFQ to process Wire EDM".
+    #: Routing instruction from a colleague, not a customer request, and the
+    #: classifier is told which is which.
+    internal_note: Mapped[str | None] = mapped_column(Text)
     #: Resolved anchor, set when customer_reference maps to a real past quote.
     anchor_quote_id: Mapped[int | None] = mapped_column(ForeignKey("quote.id", ondelete="SET NULL"))
     due_date: Mapped[date | None] = mapped_column(Date)

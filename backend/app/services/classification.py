@@ -148,6 +148,8 @@ def classify_part(
             email_body=enquiry.body_text,
             customer_summary=_customer_summary(enquiry),
             history_summary=_history_summary(matches),
+            internal_note=enquiry.internal_note,
+            forwarded_by=enquiry.forwarded_by,
         ),
         schema=classification_prompt.build_schema(),
     )
@@ -365,13 +367,23 @@ def _apply_email_facts(db: Session, part: Part, payload: dict) -> None:
             dedupe_key=f"anchor:{anchor.id}",
         )
     elif enquiry.customer_reference:
+        # Historic quote numbers (Op#####, COM#####) live in the old system
+        # until the archive is imported, so "not found" here usually means
+        # "before this system's time" rather than "wrong reference".
+        looks_like_ours = enquiry.customer_reference[:3].lower() in ("op0", "com", "op1")
         flag_service.raise_flag(
             db,
             enquiry_id=enquiry.id,
-            category=FlagCategory.EXTRACTION_UNCERTAINTY.value,
-            severity=FlagSeverity.WARN.value,
+            category=FlagCategory.INDUSTRY_EXPERIENCE.value
+            if looks_like_ours
+            else FlagCategory.EXTRACTION_UNCERTAINTY.value,
+            severity=FlagSeverity.INFO.value if looks_like_ours else FlagSeverity.WARN.value,
             message=(
-                f"The email references '{enquiry.customer_reference}' but that "
+                f"This refers back to quote {enquiry.customer_reference}, which "
+                "predates this system. Look it up in the old records and price "
+                "from there rather than from scratch."
+                if looks_like_ours
+                else f"The email references '{enquiry.customer_reference}' but that "
                 "does not resolve to a sent quote for this customer. Check "
                 "before treating it as a repeat."
             ),
