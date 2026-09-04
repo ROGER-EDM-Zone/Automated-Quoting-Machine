@@ -368,8 +368,9 @@
         <span class="n">You, commercially</span>
         <span class="t">Your real hourly rates</span>
         <span class="d">
-          Seven processes, one rate each. There is no default rate anywhere in the code —
-          a process without a rate refuses to price rather than guessing.
+          Eight processes, one rate each — and first, whether £65/h is what you charge
+          or what it costs you. There is no default rate anywhere in the code: a process
+          without a rate refuses to price rather than guessing.
         </span>
       </li>
       <li>
@@ -546,13 +547,32 @@
               <tr><td><code>cnc_mill</code></td><td>Milling and machining centres</td><td class="fill num">£ ______</td></tr>
               <tr><td><code>cnc_turn</code></td><td>Turning</td><td class="fill num">£ ______</td></tr>
               <tr><td><code>grind</code></td><td>Surface / cylindrical grinding</td><td class="fill num">£ ______</td></tr>
+              <tr><td><code>laser_etch</code></td><td>Part marking, in house</td><td class="fill num">£ ______</td></tr>
               <tr><td><code>manual</code></td><td>Bench, fitting, deburr, manual machines</td><td class="fill num">£ ______</td></tr>
               <tr><td><code>qc</code></td><td>Inspection and reporting</td><td class="fill num">£ ______</td></tr>
             </tbody>
           </table>
         </div>
+        <div class="send" style="margin-top:14px">
+          <span class="send-label">First, one question that changes every number above</span>
+          <ul>
+            <li>
+              Is your <strong>£65/hour a charge-out rate or a cost rate</strong> — is that
+              what the customer pays for an hour, or what an hour costs you before margin?
+            </li>
+          </ul>
+        </div>
+        <p>
+          I have to ask because it decides whether margin goes on top. Your own worked
+          example — <em>a one-off with an hour of wire in it, an hour to set, comes to
+          £130</em> — reads as a charge-out rate, since 2 hours × £65 is exactly £130 with
+          nothing added. If that is right, margin should not be applied to labour again, and
+          the customer margin should be set to zero with the rate carrying it. On the Ricardo
+          job the difference between the two readings was <strong>£222</strong>, so it is
+          worth one sentence from you before anything real gets quoted.
+        </p>
         <p style="margin-top:14px">
-          <strong>Do any of these differ by machine?</strong> If your large wire machine
+          <strong>Second, do any of these differ by machine?</strong> If your large wire machine
           bills differently from the small one, or 5-axis differs from 3-axis, say so — the
           rate table already supports a machine group per rate and I will split them. If one
           rate per process is how you actually quote, leave it simple.
@@ -681,6 +701,91 @@
         <p>
           If a material has no stock listed, the system refuses to price it and flags it for
           your buyer rather than inventing a material cost.
+        </p>
+        <p>
+          <strong>This got easier.</strong> Where a supplier publishes their range on a web
+          page, the system can now read the sizes off it and keep the list current on its
+          own — see <em>Where to look up prices</em> below. What you send me is then the
+          starting point rather than a list somebody has to maintain by hand.
+        </p>
+      </div>
+
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>How much you leave on for machining</h3>
+          <span class="pill pill-blocker">Blocks correct material sizing</span>
+        </div>
+        <p>
+          You told me the rule of thumb: <em>3–5mm on the OD, and 3–5mm on the length of one
+          part</em>. That is now what decides the size of bar a job buys, and it needs one
+          number each rather than a range. Until they are set, the calculator sizes stock to
+          the <em>finished</em> part — which buys a bar with nothing left to clean up — and
+          flags every job saying so.
+        </p>
+        <div class="send">
+          <span class="send-label">Tell me two numbers</span>
+          <ul>
+            <li>Millimetres left on the diameter, or on each face of a square section</li>
+            <li>Millimetres left on the length of one part, before the parting cut</li>
+          </ul>
+        </div>
+        <p>
+          Worth knowing how it uses them, because it changes what gets bought: it grows the
+          part by your allowance first, <em>then</em> takes the smallest size your supplier
+          actually holds. So a part needing Ø89 buys the Ø90 bar — not Ø89, which nobody
+          sells. Both numbers live in the rules table and you can change them yourself; they
+          are a data edit, not a code change.
+        </p>
+      </div>
+
+      <div class="item is-blocker">
+        <div class="item-head">
+          <h3>Where to look up prices</h3>
+          <span class="pill pill-blocker">Blocks live material costs</span>
+        </div>
+        <p>
+          Steel moves. A system that reads your prices once at install and never again is
+          wrong within a month, quietly, in whichever direction the market went. So it goes
+          and looks: it fetches a page, reads the figure off it, and keeps the line of text
+          it read alongside the number. Nothing is ever recalled from memory — if a page
+          cannot be reached, the price shows as unread and the job flags, rather than
+          falling back to something plausible.
+        </p>
+        <div class="send">
+          <span class="send-label">Send me, for each material you buy regularly</span>
+          <ul>
+            <li>The <strong>web address of the page</strong> that actually shows the price — your usual stockholder's product page is ideal</li>
+            <li>Whether that price is your account price or the public one</li>
+            <li>The material spec and form it covers — EN16 round bar, EN30B square, and so on</li>
+          </ul>
+        </div>
+        <p>
+          Eight sources are already set up and switched off, waiting for addresses:
+          EN16, EN30B, 1.2312, 6082 aluminium, 316 stainless, EDM wire, electricity and a
+          trade hourly-rate benchmark. You can paste the addresses in yourself under
+          <strong>Market data</strong> in the app.
+        </p>
+        <p>
+          Two honest limits. Some trade sites hide prices behind a login or draw them with
+          JavaScript — those cannot be read this way, and the system will say so plainly
+          rather than guess. And published web prices are small-quantity retail; buying on
+          account you will pay less, so treat a scraped figure as a ceiling until you tell
+          me your actual account rate.
+        </p>
+      </div>
+
+      <div class="item is-golive">
+        <div class="item-head">
+          <h3>Densities, if you want prices per kilo to work</h3>
+          <span class="pill pill-golive">Mostly done already</span>
+        </div>
+        <p>
+          Stockholders price per kilogram; the calculator needs to buy a bar. Converting
+          between the two needs the material's density, and there is deliberately no
+          default — guessing a density to reach a price is exactly the kind of invention
+          the rest of this system exists to prevent. Steels are already filled in at
+          7,850 kg/m³. If you quote much aluminium, bronze or plastics, I need theirs, or
+          those materials fall back to a typed price and flag.
         </p>
       </div>
     </div>
@@ -917,11 +1022,11 @@
           <span class="pill pill-mine">Mine</span>
         </div>
         <p>
-          You want tabs like <em>quote to check</em>, <em>ready to send</em>,
-          <em>awaiting feedback</em>. The states already exist underneath — what's missing
-          is naming them as tabs across the top of the queue. This is how I'd map them; tell
-          me if the names or the cuts are wrong, because these are your words for your
-          process, not mine:
+          <strong>Built.</strong> The queue opens as six lists rather than one. I added
+          <em>Coming in</em> to your five, because without it anything still being read
+          would have sat in no list at all — and an enquiry in no list is one nobody
+          chases. Tell me if the names are wrong; these are meant to be your words for
+          your process, not mine.
         </p>
         <div class="table-wrap">
           <table>
@@ -930,6 +1035,7 @@
             </thead>
             <tbody>
               <tr><td><strong>Needs attention</strong></td><td>Something is blocking — a field it couldn't read, a missing rate, a drawing revision conflict</td></tr>
+              <tr><td><strong>Coming in</strong></td><td>Arrived, being read and routed. Nothing is owed from you yet</td></tr>
               <tr><td><strong>To check</strong></td><td>Priced and waiting for an estimator to go through it</td></tr>
               <tr><td><strong>Ready to send</strong></td><td>Approved, draft written, waiting for someone to press send in Outlook</td></tr>
               <tr><td><strong>Awaiting feedback</strong></td><td>Sent, no answer from the customer yet</td></tr>
@@ -937,6 +1043,13 @@
             </tbody>
           </table>
         </div>
+        <p>
+          One rule in there is worth knowing about, because it will occasionally move a
+          quote you were expecting to find: <strong>an approved quote with an unresolved
+          blocking flag leaves Ready to send and appears in Needs attention instead.</strong>
+          A blocked quote sitting in the list people send from is the one that goes out by
+          accident on a Friday afternoon. Clear the flag and it returns.
+        </p>
       </div>
 
       <div class="item is-done">
