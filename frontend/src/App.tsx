@@ -4,6 +4,7 @@ import EnquiryWorkspace from "./pages/EnquiryWorkspace";
 import CustomerPage from "./pages/CustomerPage";
 import AdminRates from "./pages/AdminRates";
 import AdminRules from "./pages/AdminRules";
+import AdminMarket from "./pages/AdminMarket";
 import Reports from "./pages/Reports";
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
           <NavLink to="/queue">Queue</NavLink>
           <NavLink to="/admin/rates">Rates</NavLink>
           <NavLink to="/admin/rules">Rules</NavLink>
+          <NavLink to="/admin/market">Market data</NavLink>
           <NavLink to="/reports">Reports</NavLink>
         </nav>
       </header>
@@ -26,6 +28,7 @@ export default function App() {
           <Route path="/customer/:id" element={<CustomerPage />} />
           <Route path="/admin/rates" element={<AdminRates />} />
           <Route path="/admin/rules" element={<AdminRules />} />
+          <Route path="/admin/market" element={<AdminMarket />} />
           <Route path="/reports" element={<Reports />} />
         </Routes>
       </main>

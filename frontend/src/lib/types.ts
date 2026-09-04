@@ -46,6 +46,63 @@ export interface MaterialRequirement {
   blanks_per_unit_stock: number | null;
   utilisation_pct: string | null;
   total_cost: string | null;
+  /** What the part needed once the machining allowance was on. */
+  required_section_mm: string | null;
+  required_length_mm: string | null;
+  /** How much bigger the bought size is than the requirement. */
+  section_oversize_mm: string | null;
+  price_source_name: string | null;
+  price_source_url: string | null;
+  price_observed_at: string | null;
+  price_is_stale: boolean;
+}
+
+/** One outside number the quote depends on, and how much to trust it. */
+export interface MarketSeries {
+  id: number;
+  series_key: string;
+  name: string;
+  kind: string;
+  unit: string;
+  basis: string;
+  spec: string | null;
+  url: string | null;
+  active: boolean;
+  max_age_hours: number;
+  value: string | null;
+  observed_at: string | null;
+  age_hours: number | null;
+  is_stale: boolean;
+  evidence: string | null;
+  confidence: number | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  consecutive_failures: number;
+  status: MarketStatus;
+}
+
+export type MarketStatus =
+  | "current"
+  | "stale"
+  | "never_read"
+  | "last_refresh_failed"
+  | "off";
+
+export interface MarketRefreshResult {
+  series_key: string;
+  source_name: string;
+  ok: boolean;
+  detail: string;
+  value: string | null;
+  unit: string | null;
+  sizes_found: number;
+  stock_rows_written: number;
+}
+
+export interface MarketRefresh {
+  results: MarketRefreshResult[];
+  succeeded: number;
+  failed: number;
 }
 
 export interface Part {

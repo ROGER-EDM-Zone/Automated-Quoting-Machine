@@ -16,11 +16,23 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import CurrentUser, get_current_user
-from app.models import Customer, QuoteNote, RateTable, RulesTable, StockSize, utcnow
+from app.deps import CurrentUser, get_ai, get_current_user
+from app.models import (
+    Customer,
+    MarketSource,
+    QuoteNote,
+    RateTable,
+    RulesTable,
+    StockSize,
+    utcnow,
+)
 from app.schemas import (
     CustomerIn,
     CustomerOut,
+    MarketRefreshOut,
+    MarketSeriesOut,
+    MarketSourceIn,
+    MarketSourceOut,
     RateIn,
     RateOut,
     RuleIn,
@@ -28,6 +40,7 @@ from app.schemas import (
     StockIn,
     StockOut,
 )
+from app.services import market
 from app.services.notes import promote_note_to_rule, recurring_note_candidates
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -250,6 +263,95 @@ def update_stock(
     db.commit()
     db.refresh(row)
     return row
+
+
+# --------------------------------------------------------------------------
+# Market data
+# --------------------------------------------------------------------------
+@router.get("/market", response_model=list[MarketSeriesOut])
+def list_market_series(
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    """Every outside number the quote depends on, with its age.
+
+    Deliberately one list rather than one per kind: the question an estimator
+    asks before sending a quote is "is anything in here out of date", and the
+    answer should not require visiting six screens.
+    """
+    return market.series_summary(db)
+
+
+@router.get("/market/sources", response_model=list[MarketSourceOut])
+def list_market_sources(
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    return list(db.scalars(select(MarketSource).order_by(MarketSource.kind, MarketSource.id)).all())
+
+
+@router.post("/market/sources", response_model=MarketSourceOut, status_code=201)
+def create_market_source(
+    body: MarketSourceIn,
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    """Adding a supplier is a data edit, exactly as adding a rate is."""
+    row = MarketSource(**body.model_dump())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.patch("/market/sources/{source_id}", response_model=MarketSourceOut)
+def update_market_source(
+    source_id: int,
+    body: MarketSourceIn,
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    row = db.get(MarketSource, source_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Market source not found")
+    for key, value in body.model_dump().items():
+        setattr(row, key, value)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+@router.post("/market/refresh", response_model=MarketRefreshOut)
+def refresh_market(
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+    ai=Depends(get_ai),
+    series_key: str | None = None,
+):
+    """Go and look again, now.
+
+    Returns what each source said, including the ones that failed and why —
+    a refresh that silently half-worked is worse than one that did not run.
+    """
+    report = market.refresh(db, series_key=series_key, ai=ai)
+    db.commit()
+    return {
+        "results": [
+            {
+                "series_key": r.series_key,
+                "source_name": r.source_name,
+                "ok": r.ok,
+                "detail": r.detail,
+                "value": r.value,
+                "unit": r.unit,
+                "sizes_found": r.sizes_found,
+                "stock_rows_written": r.stock_rows_written,
+            }
+            for r in report.results
+        ],
+        "succeeded": len(report.succeeded),
+        "failed": len(report.failed),
+    }
 
 
 # --------------------------------------------------------------------------

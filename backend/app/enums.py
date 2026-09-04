@@ -137,12 +137,26 @@ class AdjustmentType(StrEnum):
     PCT = "pct"
     FIXED = "fixed"
     FLAG_ONLY = "flag_only"
+    #: A length in millimetres, not money. Kept in the rules table because it
+    #: is a shop rule the business changes, but it must never reach the
+    #: pricing engine as an adjustment.
+    MM = "mm"
+
+
+#: Adjustment types the pricing engine will act on. Anything else in the
+#: rules table is a setting the business edits, not money.
+MONETARY_ADJUSTMENTS = frozenset({AdjustmentType.PCT, AdjustmentType.FIXED})
 
 
 class RuleKey(StrEnum):
     RUSH_UPLIFT = "rush_uplift"
     DIFFICULT_JOB_CONTINGENCY = "difficult_job_contingency"
     MIN_QUOTE_VALUE = "min_quote_value"
+    #: Millimetres left on the diameter (or each section face) for clean-up,
+    #: before any stock size is looked at. The shop's "3-5mm on the OD".
+    MATERIAL_ALLOWANCE_SECTION = "material_allowance_section"
+    #: Millimetres left on the length of one part, before the parting kerf.
+    MATERIAL_ALLOWANCE_LENGTH = "material_allowance_length"
 
 
 class StockForm(StrEnum):
@@ -151,3 +165,57 @@ class StockForm(StrEnum):
     BAR_SQUARE = "bar_square"
     TUBE = "tube"
     BILLET = "billet"
+
+
+class MarketKind(StrEnum):
+    """What a market series measures.
+
+    Deliberately broad — the point of this layer is that *every* number that
+    drifts with the outside world is refreshed the same way, not just steel.
+    """
+
+    MATERIAL_PRICE = "material_price"
+    LABOUR_RATE = "labour_rate"
+    CONSUMABLE = "consumable"
+    ENERGY = "energy"
+    SUBCONTRACT = "subcontract"
+    INDEX = "index"
+
+
+class MarketUnit(StrEnum):
+    """The unit an observation is in. Never inferred — a source states it."""
+
+    GBP_PER_KG = "gbp_per_kg"
+    GBP_PER_METRE = "gbp_per_metre"
+    GBP_PER_HOUR = "gbp_per_hour"
+    GBP_PER_KWH = "gbp_per_kwh"
+    GBP_EACH = "gbp_each"
+    INDEX_POINTS = "index_points"
+
+
+class MarketMethod(StrEnum):
+    """How a value was obtained, because it changes how much to trust it.
+
+    ``AI_READ`` means a model read a page this app fetched and reported what
+    the page said, with a confidence score and a quoted excerpt. It never
+    means the model recalled a price — nothing in this system prices off a
+    remembered number.
+    """
+
+    SCRAPED = "scraped"
+    AI_READ = "ai_read"
+    MANUAL = "manual"
+
+
+class MarketBasis(StrEnum):
+    """Whose price this is, which matters more than the figure itself.
+
+    A published web price is small-quantity retail. A shop buying on account
+    pays less, and quoting off the retail figure quietly pads every job.
+    """
+
+    RETAIL_ONLINE = "retail_online"
+    TRADE_PUBLISHED = "trade_published"
+    SUPPLIER_QUOTE = "supplier_quote"
+    SURVEY = "survey"
+    INDEX = "index"

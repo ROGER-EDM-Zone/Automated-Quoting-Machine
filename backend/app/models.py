@@ -36,6 +36,7 @@ from app.enums import (
     EnquiryStatus,
     FlagSeverity,
     JobType,
+    MarketMethod,
     Process,
     QuoteStatus,
     TimeSource,
@@ -196,6 +197,11 @@ class Part(Base, TimestampMixin):
     envelope_x: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     envelope_y: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     envelope_z: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    #: True when the part is turned — round about one axis. It decides how
+    #: much bar the job needs: a round part clears the bore on its own
+    #: diameter, a block has to clear its corners too. None means nobody has
+    #: said, and the nester infers it from the envelope and the routing.
+    is_rotational: Mapped[bool | None] = mapped_column(Boolean)
 
     tightest_tolerance: Mapped[str | None] = mapped_column(String(120))
     features: Mapped[dict[str, Any] | None] = mapped_column(JSON)
@@ -303,6 +309,17 @@ class MaterialRequirement(Base, TimestampMixin):
     blanks_per_unit_stock: Mapped[int | None] = mapped_column(Integer)
     utilisation_pct: Mapped[Decimal | None] = mapped_column(Pct)
     total_cost: Mapped[Decimal | None] = mapped_column(Money)
+    #: What the part actually needed once the machining allowance was on,
+    #: kept beside what was bought. "Needed 91.32, bought 100" is the sentence
+    #: an estimator wants; "bought 100" on its own is not.
+    required_section_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    required_length_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    section_oversize_mm: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    #: Where the unit cost came from, when it came from a live source.
+    price_source_name: Mapped[str | None] = mapped_column(String(120))
+    price_source_url: Mapped[str | None] = mapped_column(String(500))
+    price_observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    price_is_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     part: Mapped[Part] = relationship(back_populates="material_requirements")
 
@@ -569,6 +586,109 @@ class StockSize(Base, TimestampMixin):
     kerf_mm: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("3"))
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+    # --- live sourcing -------------------------------------------------
+    #: Where this row came from. ``manual`` is a row somebody typed and owns;
+    #: anything else was written by a market refresh and will be rewritten by
+    #: the next one. A refresh never touches a manual row.
+    origin: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=MarketMethod.MANUAL.value
+    )
+    #: The price series this size costs from, e.g. ``material:en16:round_bar``.
+    #: With a series and a density, ``unit_cost`` is computed from the live
+    #: price rather than typed; without them the typed figure stands.
+    market_series_key: Mapped[str | None] = mapped_column(String(120), index=True)
+    #: kg/m3. No default: guessing a density to reach a price is exactly the
+    #: kind of invention this system exists to prevent.
+    density_kg_m3: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    #: Whether the supplier currently lists this size. A size that has fallen
+    #: out of the range is kept, not deleted, so old quotes still explain
+    #: themselves — but it stops being offered.
+    listed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    priced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_name: Mapped[str | None] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+
+
+# --------------------------------------------------------------------------
+# Live market data
+# --------------------------------------------------------------------------
+class MarketSource(Base, TimestampMixin):
+    """One place the app goes to find out what something costs today.
+
+    Adding a supplier is a data edit, not a deployment — the same rule the
+    rate table follows. The source carries its own health, so "the price is
+    old" and "the source has been failing for a fortnight" are different
+    statements and the UI can make both.
+    """
+
+    __tablename__ = "market_source"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    #: Stable identifier used in code and in stock rows.
+    series_key: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    kind: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False)
+    basis: Mapped[str] = mapped_column(String(30), nullable=False)
+    url: Mapped[str | None] = mapped_column(String(500))
+    #: What to look for on the page, in words. Passed to the reader so it
+    #: knows whether it wants a per-kg figure, a size range, or both.
+    target: Mapped[str | None] = mapped_column(Text)
+    #: Material specification this source prices, when it prices one.
+    spec: Mapped[str | None] = mapped_column(String(200), index=True)
+    stock_form: Mapped[str | None] = mapped_column(String(40))
+    #: Hours before a value from this source counts as stale. Steel moves
+    #: faster than an energy tariff, so this is per-source.
+    max_age_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=168)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    observations: Mapped[list[MarketObservation]] = relationship(
+        back_populates="source", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (Index("ix_market_source_series_active", "series_key", "active"),)
+
+
+class MarketObservation(Base):
+    """One reading of one series at one moment. Append-only.
+
+    Never updated and never deleted by a refresh: the record of what the
+    system believed when it priced a job is the only way to explain that job
+    a year later.
+    """
+
+    __tablename__ = "market_observation"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("market_source.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    series_key: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    value: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GBP")
+    method: Mapped[str] = mapped_column(String(20), nullable=False)
+    basis: Mapped[str] = mapped_column(String(30), nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Numeric(4, 3))
+    #: The text the value was read from, quoted. An unevidenced number from a
+    #: reader is treated as unread, exactly as on a drawing.
+    evidence: Mapped[str | None] = mapped_column(Text)
+    #: Sizes the page listed, when the source is a stock range.
+    sizes_mm: Mapped[list[Any] | None] = mapped_column(JSON)
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False, index=True
+    )
+
+    source: Mapped[MarketSource] = relationship(back_populates="observations")
+
+    __table_args__ = (Index("ix_market_obs_series_time", "series_key", "observed_at"),)
+
 
 class QuoteOutcome(Base):
     """Won/lost and estimate vs actual, for calibration."""
@@ -597,6 +717,8 @@ __all__ = [
     "Enquiry",
     "Flag",
     "MaterialRequirement",
+    "MarketObservation",
+    "MarketSource",
     "Operation",
     "Part",
     "Quote",

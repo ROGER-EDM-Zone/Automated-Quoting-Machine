@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
-import type { Breakdown, Flag, Part, Quote, SimilarResponse, Workspace } from "../lib/types";
+import type {
+  Breakdown,
+  Flag,
+  MaterialRequirement,
+  Part,
+  Quote,
+  SimilarResponse,
+  Workspace,
+} from "../lib/types";
 import { dateTime, minutes, money, processLabel, titleCase } from "../lib/format";
 import {
   Card,
@@ -349,7 +357,7 @@ function PartPanel({
           <table>
             <thead>
               <tr>
-                <th>Spec</th><th>Stock</th><th className="num">Blanks/stock</th>
+                <th>Spec</th><th>Needed</th><th>Buying</th><th className="num">Blanks/stock</th>
                 <th className="num">Qty</th><th className="num">Utilisation</th><th className="num">Cost</th>
               </tr>
             </thead>
@@ -357,11 +365,35 @@ function PartPanel({
               {part.material_requirements.map((m) => (
                 <tr key={m.id}>
                   <td>{m.spec}</td>
-                  <td>{m.stock_size}</td>
+                  {/* Needed and buying are separate columns on purpose. The
+                      size the part wants and the size the supplier sells are
+                      different numbers, and collapsing them hides both the
+                      allowance and the waste. */}
+                  <td>
+                    {m.required_section_mm ? (
+                      <>
+                        {m.required_section_mm}mm
+                        {m.required_length_mm && (
+                          <span className="subtle"> × {m.required_length_mm}mm</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="unread">not sized</span>
+                    )}
+                  </td>
+                  <td>
+                    {m.stock_size}
+                    {m.section_oversize_mm && Number(m.section_oversize_mm) > 0 && (
+                      <span className="subtle"> (+{m.section_oversize_mm}mm)</span>
+                    )}
+                  </td>
                   <td className="num">{m.blanks_per_unit_stock ?? "—"}</td>
                   <td className="num">{m.qty_required}</td>
                   <td className="num">{m.utilisation_pct ? `${m.utilisation_pct}%` : "—"}</td>
-                  <td className="num">{money(m.total_cost)}</td>
+                  <td className="num">
+                    {money(m.total_cost)}
+                    <MaterialPriceSource requirement={m} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -635,5 +667,29 @@ function SimilarJobs({ partId }: { partId: number }) {
         </div>
       ))}
     </Card>
+  );
+}
+
+
+/**
+ * Where the material price came from, under the price.
+ *
+ * Three states that must stay visually distinct, for the same reason
+ * calculator and estimated times must: an estimator scanning a quote has to
+ * be able to see, without clicking anything, whether the steel figure is
+ * today's or somebody's memory of last year's.
+ */
+function MaterialPriceSource({ requirement }: { requirement: MaterialRequirement }) {
+  if (!requirement.price_source_name) {
+    return <div className="price-source price-typed">price entered by hand</div>;
+  }
+  const observed = requirement.price_observed_at
+    ? new Date(requirement.price_observed_at).toLocaleDateString("en-GB")
+    : null;
+  return (
+    <div className={`price-source ${requirement.price_is_stale ? "price-stale" : "price-live"}`}>
+      {requirement.price_source_name}
+      {observed && <span className="subtle"> · {observed}</span>}
+    </div>
   );
 }

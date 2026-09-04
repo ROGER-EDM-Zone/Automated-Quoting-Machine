@@ -80,6 +80,13 @@ class MaterialRequirementOut(ORMModel):
     blanks_per_unit_stock: int | None = None
     utilisation_pct: Decimal | None = None
     total_cost: Decimal | None = None
+    required_section_mm: Decimal | None = None
+    required_length_mm: Decimal | None = None
+    section_oversize_mm: Decimal | None = None
+    price_source_name: str | None = None
+    price_source_url: str | None = None
+    price_observed_at: datetime | None = None
+    price_is_stale: bool = False
 
 
 class PartOut(ORMModel):
@@ -99,6 +106,7 @@ class PartOut(ORMModel):
     envelope_x: Decimal | None = None
     envelope_y: Decimal | None = None
     envelope_z: Decimal | None = None
+    is_rotational: bool | None = None
     tightest_tolerance: str | None = None
     features: dict[str, Any] | None = None
     job_type: str
@@ -416,6 +424,90 @@ class StockOut(ORMModel):
     unit_cost: Decimal
     kerf_mm: Decimal
     active: bool
+    origin: str
+    listed: bool
+    market_series_key: str | None = None
+    density_kg_m3: Decimal | None = None
+    source_name: str | None = None
+    source_url: str | None = None
+
+
+# --------------------------------------------------------------------------
+# Market data
+# --------------------------------------------------------------------------
+class MarketSourceIn(BaseModel):
+    series_key: str
+    name: str
+    kind: str
+    unit: str
+    basis: str
+    url: str | None = None
+    target: str | None = None
+    spec: str | None = None
+    stock_form: str | None = None
+    max_age_hours: int = Field(default=168, ge=1)
+    active: bool = True
+
+
+class MarketSourceOut(ORMModel):
+    id: int
+    series_key: str
+    name: str
+    kind: str
+    unit: str
+    basis: str
+    url: str | None = None
+    target: str | None = None
+    spec: str | None = None
+    stock_form: str | None = None
+    max_age_hours: int
+    active: bool
+    last_attempt_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_error: str | None = None
+    consecutive_failures: int
+
+
+class MarketSeriesOut(BaseModel):
+    """One series as the workspace shows it: the value and how to judge it."""
+
+    id: int
+    series_key: str
+    name: str
+    kind: str
+    unit: str
+    basis: str
+    spec: str | None = None
+    url: str | None = None
+    active: bool
+    max_age_hours: int
+    value: str | None = None
+    observed_at: str | None = None
+    age_hours: float | None = None
+    is_stale: bool
+    evidence: str | None = None
+    confidence: float | None = None
+    last_success_at: str | None = None
+    last_error: str | None = None
+    consecutive_failures: int
+    status: str
+
+
+class MarketRefreshResultOut(BaseModel):
+    series_key: str
+    source_name: str
+    ok: bool
+    detail: str
+    value: Decimal | None = None
+    unit: str | None = None
+    sizes_found: int = 0
+    stock_rows_written: int = 0
+
+
+class MarketRefreshOut(BaseModel):
+    results: list[MarketRefreshResultOut]
+    succeeded: int
+    failed: int
 
 
 class CustomerIn(BaseModel):

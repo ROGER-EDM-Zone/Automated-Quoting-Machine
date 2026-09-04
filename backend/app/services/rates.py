@@ -16,8 +16,9 @@ from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.enums import AdjustmentType, RuleKey
+from app.enums import MONETARY_ADJUSTMENTS, AdjustmentType, RuleKey
 from app.models import RateTable, RulesTable, StockSize
+from app.nesting import Allowance
 from app.pricing import AdjustmentRule, MissingRate
 
 
@@ -126,18 +127,47 @@ def rules_in_scope(db: Session, applied_rule_ids: list[int] | None) -> list[Adju
         row = db.get(RulesTable, rule_id)
         if row is None or not row.active:
             continue
+        if row.adjustment_type not in MONETARY_ADJUSTMENTS:
+            # A millimetre is not a price. Selecting the allowance rule on a
+            # quote must not add 4 to it.
+            continue
         rules.append(to_adjustment_rule(row))
         seen.add(row.id)
 
     return rules
 
 
+def machining_allowance(db: Session) -> Allowance:
+    """The material left on for clean-up, as the business has set it.
+
+    Zero when the rules are absent, and deliberately so: an allowance nobody
+    chose is a price nobody chose. `compute_material` raises a flag when it
+    finds nothing here rather than quietly assuming 3mm.
+    """
+    section = rule_by_key(db, RuleKey.MATERIAL_ALLOWANCE_SECTION.value)
+    length = rule_by_key(db, RuleKey.MATERIAL_ALLOWANCE_LENGTH.value)
+    return Allowance(
+        section_mm=Decimal(section.adjustment_value) if section is not None else Decimal("0"),
+        length_mm=Decimal(length.adjustment_value) if length is not None else Decimal("0"),
+    )
+
+
 def stock_options(db: Session, spec: str) -> list[StockSize]:
-    """Active stock rows whose spec matches, for the nesting calculator."""
+    """Stock rows the calculator may choose from for a specification.
+
+    `listed` is the live half: a size the supplier has stopped holding stays
+    in the table so last year's quote still explains itself, but it is not
+    offered for a new one. Quoting a size nobody can supply is a quote that
+    has to be redone.
+    """
     return list(
         db.scalars(
             select(StockSize)
-            .where(StockSize.active.is_(True), StockSize.spec == spec)
+            .where(
+                StockSize.active.is_(True),
+                StockSize.listed.is_(True),
+                StockSize.spec == spec,
+            )
             .order_by(StockSize.id)
         ).all()
     )

@@ -727,3 +727,64 @@ def test_the_triage_card_and_the_queue_agree(seeded):
 def test_an_unknown_message_is_a_404_not_an_empty_card(seeded):
     client, *_ = seeded
     assert client.get("/enquiries/by-message/not-a-real-message").status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Market data endpoints
+# --------------------------------------------------------------------------
+def test_the_market_page_lists_every_series_with_its_age(api):
+    client, db, _stub, _storage = api
+    from app.enums import MarketBasis, MarketKind, MarketUnit
+    from app.models import MarketSource
+
+    db.add(
+        MarketSource(
+            series_key="material:en16:round_bar",
+            name="Test Stockholder",
+            kind=MarketKind.MATERIAL_PRICE.value,
+            unit=MarketUnit.GBP_PER_KG.value,
+            basis=MarketBasis.RETAIL_ONLINE.value,
+            url="https://example.test/en16",
+            spec="EN16",
+        )
+    )
+    db.commit()
+
+    body = client.get("/admin/market").json()
+
+    assert len(body) == 1
+    assert body[0]["series_key"] == "material:en16:round_bar"
+    # Never read is never zero.
+    assert body[0]["value"] is None
+    assert body[0]["status"] == "never_read"
+    assert body[0]["is_stale"] is True
+
+
+def test_a_market_source_is_added_as_a_data_edit(api):
+    client, *_ = api
+    from app.enums import MarketBasis, MarketKind, MarketUnit
+
+    created = client.post(
+        "/admin/market/sources",
+        json={
+            "series_key": "material:en30b:square_bar",
+            "name": "Square bar supplier",
+            "kind": MarketKind.MATERIAL_PRICE.value,
+            "unit": MarketUnit.GBP_PER_KG.value,
+            "basis": MarketBasis.RETAIL_ONLINE.value,
+            "url": "https://example.test/en30b",
+            "spec": "EN30B",
+            "stock_form": "bar_square",
+            "max_age_hours": 168,
+        },
+    )
+    assert created.status_code == 201
+
+    listed = client.get("/admin/market/sources").json()
+    assert [row["series_key"] for row in listed] == ["material:en30b:square_bar"]
+
+
+def test_refreshing_with_no_sources_configured_is_not_an_error(api):
+    client, *_ = api
+    body = client.post("/admin/market/refresh").json()
+    assert body == {"results": [], "succeeded": 0, "failed": 0}

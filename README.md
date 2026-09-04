@@ -197,7 +197,7 @@ the build-up as its own line rather than being absorbed.
 backend/
   app/
     pricing.py          the deterministic engine — no AI, no I/O
-    nesting.py          deterministic material nesting
+    nesting.py          allowance, then the size the supplier actually holds
     models.py           the spec section 2 schema
     enums.py            controlled vocabularies; Process is the ERP surface
     services/
@@ -208,17 +208,80 @@ backend/
       approval.py       stage 6   rates.py       no default rate, anywhere
       ai.py             the single seam for every AI call
       graph.py          Microsoft Graph: reads mail, creates drafts, never sends
+      market.py         live prices and live stock sizes, with their receipts
+      market_fetch.py   fetch a page; never guess when it cannot be reached
     prompts/            extraction, classification, note interpretation
     api/                the endpoints
-  tests/                126 tests
+  tests/                224 tests
   scripts/seed.py       development data (placeholders only)
+  scripts/refresh_market.py   put this on a nightly schedule
 frontend/               React + TypeScript estimator workspace
 outlook-addin/          Office.js triage card — read-only by design
 ```
 
 ---
 
+## Material: the size, then the price
+
+Two separate questions, in this order, and getting either wrong is expensive.
+
+**What size does the job need?** The finished part plus the machining
+allowance the business has set — its "3-5mm on the OD, 3-5mm on the length" —
+kept in `rules_table` as `material_allowance_section` and
+`material_allowance_length`. There is no default. Without those rows the
+calculator sizes stock to the finished part, which buys bar with nothing left
+to clean up, so it prices anyway and raises a flag saying exactly that.
+
+Shape matters as much as size. A turned part clears the bore on its own
+diameter; a block has to clear its corners too, so a 50mm cube needs 75mm of
+round bar but only 54mm of square. The part is treated as turned when an
+estimator says so, or failing that when it is routed through the lathe *and*
+two of its envelope dimensions match — conservative on purpose, because
+over-buying steel is recoverable and quoting a bar the part will not come out
+of is not. If a square part gets costed out of round bar because no square or
+flat was listed for that specification, that is a flag, not a silent 60%
+premium.
+
+**What does that size cost today?** `market.py` fetches supplier and published
+pages, has the reader report the figure *with the line of text it read it
+from*, and records the observation with a timestamp. Three rules:
+
+* **Nothing is remembered.** A value exists only if a page was fetched and a
+  line on it said so. A price with no quoted evidence is discarded, not
+  recorded. There is no fallback to a plausible number, because a plausible
+  number is indistinguishable from a real one once it is in a quote.
+* **Age is a fact.** Every value carries when it was read, each source sets
+  its own `max_age_hours` (steel moves faster than an energy tariff), and a
+  stale price flags rather than quietly pricing. A price entered by hand is a
+  third state again, and the three render differently — the same rule the
+  time sources follow, and guarded the same way by `check-styles.mjs`.
+* **Observations are append-only.** Explaining a quote from eighteen months
+  ago means reading what was true then.
+
+The same refresh brings in the supplier's current *range*, so the answer to
+"the part needs 92mm" is "buy the 100mm bar", not "buy 92mm" — nobody sells
+92mm. A size that drops out of the range is marked unlisted rather than
+deleted, and a stock row somebody typed by hand is never touched by a refresh.
+
+Run `python -m scripts.refresh_market --seed` to write the starting set of
+sources, give each one the address of a page that shows its number, then put
+`python -m scripts.refresh_market` on a nightly schedule. Everything is
+visible and refreshable in the app under **Market data**.
+
+Note that the fetch goes out from wherever the app is hosted. A network that
+blocks a stockholder's site will fail here and say so; it will not invent a
+price to fill the gap.
+
+---
+
 ## Deferred, but not designed out
+
+**Cut-length material pricing.** Stock is costed as whole pieces, because
+that is how the stock table describes it. A job using 400mm of a 3m bar is
+flagged with what it actually consumes and what share of the price that
+represents, so an estimator can ask the supplier — but the system does not
+price a cut length itself, because that needs the shop's cut charge and its
+view on whether the offcut is worth keeping. Both are decisions, not data.
 
 **STEP/3D CAD reading** and **direct ERP integration**, as the spec directs.
 STEP files are recognised at intake, stored, and marked in the UI as held but

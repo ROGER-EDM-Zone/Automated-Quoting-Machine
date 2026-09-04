@@ -185,3 +185,85 @@ label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px
 .paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .path { border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
 .path h4 { margin: 0 0 6px; font-size: 13px; }
+
+/* --------------------------------------------------------------------------
+   Live market data
+   --------------------------------------------------------------------------
+   The same rule the time sources follow: a value's *provenance* has to be
+   legible without reading it. A steel price read this morning and one typed
+   in last year are worth different amounts of trust, and the quote does not
+   say which unless the styling does.
+
+   Guarded by scripts/check-styles.mjs, because these classes are built from
+   data at runtime and a renamed status would silently remove the distinction
+   rather than break the build.
+   -------------------------------------------------------------------------- */
+.price-source {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 400;
+  margin-top: 2px;
+  text-align: right;
+}
+.price-live { color: var(--ok); }
+.price-stale {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px dashed var(--warn);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.price-stale::after { content: " — out of date"; }
+.price-typed {
+  color: var(--muted);
+  background: #eceff2;
+  border: 1px dotted var(--muted);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.price-typed::after { content: " — not live"; }
+
+.market-value { font-family: var(--mono); }
+.market-age { font-weight: 500; }
+
+.market-current .market-age { color: var(--ok); }
+.market-stale .market-age {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px dashed var(--warn);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.market-never_read .market-age { color: var(--muted); font-style: italic; }
+.market-last_refresh_failed .market-age {
+  color: var(--block);
+  background: var(--block-bg);
+  border: 1px solid var(--block);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.market-off { opacity: 0.55; }
+.market-off .market-age { color: var(--muted); }
+
+tr.market-stale, tr.market-last_refresh_failed { background: #fffaf0; }
+
+.evidence { font-size: 12px; color: var(--muted); max-width: 34ch; }
+.evidence q { font-style: italic; }
+.evidence a { color: var(--accent); font-size: 11px; }
+
+.refresh-ok { color: var(--ok); }
+.refresh-failed { color: var(--block); }
+
+/* Small shared utilities used by the market page. */
+.subtle { color: var(--muted); font-size: 12px; font-weight: 400; }
+.mono { font-family: var(--mono); }
+.prose { max-width: 68ch; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.plain-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.plain-list li { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.plain-list li:last-child { border-bottom: none; }
+.pill {
+  display: inline-block; font-size: 12px; padding: 2px 10px;
+  border-radius: 999px; font-weight: 600;
+}
+.pill-warn { background: var(--warn-bg); color: var(--warn); }
