@@ -39,6 +39,11 @@ _NOISE = re.compile(r"(image\d{3,}|logo|signature|footer|banner)", re.I)
 #: Zone's does — but the domain identifies the provider, not the company, so
 #: matching a customer on it would map every other BT subscriber to them too.
 #: Mail from these is left unmatched for a human to attach to a customer.
+#: SHA-256 of nothing. An attachment the mail server could not give us has
+#: this hash, and so does every other one — it therefore identifies nothing
+#: and must never be used to match files against each other.
+EMPTY_CONTENT_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
 GENERIC_EMAIL_DOMAINS = frozenset(
     {
         "aol.com",
@@ -268,10 +273,15 @@ def ingest_message(
     seen_hashes: set[str] = set()
     for item in message.attachments:
         digest = content_hash(item.content_bytes)
-        if digest in seen_hashes:
+        # Two different files that both came through empty hash identically —
+        # every empty byte string does. Deduping on that would drop the second
+        # drawing off an enquiry silently, which is the one failure mode worth
+        # more than a duplicate row. Empty attachments are always kept.
+        if item.content_bytes and digest in seen_hashes:
             # The same file attached twice in one mail. One row is enough.
             continue
-        seen_hashes.add(digest)
+        if item.content_bytes:
+            seen_hashes.add(digest)
 
         kind = classify_attachment(item.filename, item.content_type, len(item.content_bytes))
         key = attachment_key(enquiry.id, item.filename, digest)
@@ -394,7 +404,13 @@ def duplicate_attachment_matches(db: Session, enquiry: Enquiry) -> list[Attachme
     A stronger duplicate signal than drawing number plus revision, because it
     catches the case where the title block was never read.
     """
-    hashes = [a.content_hash for a in enquiry.attachments if a.content_hash]
+    # An attachment that arrived empty hashes the same as every other empty
+    # one, so matching on it would report unrelated enquiries as the same RFQ.
+    hashes = [
+        a.content_hash
+        for a in enquiry.attachments
+        if a.content_hash and a.content_hash != EMPTY_CONTENT_HASH
+    ]
     if not hashes:
         return []
     return list(

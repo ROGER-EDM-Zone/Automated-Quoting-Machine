@@ -15,7 +15,12 @@ import pytest
 from app.enums import AttachmentKind, EnquiryStatus
 from app.models import Enquiry
 from app.services.graph import GraphAttachment, GraphError, GraphMessage
-from app.services.intake import classify_attachment, ingest_message, poll_mailbox
+from app.services.intake import (
+    classify_attachment,
+    duplicate_attachment_matches,
+    ingest_message,
+    poll_mailbox,
+)
 from app.services.storage import LocalStorage
 
 
@@ -181,3 +186,79 @@ def test_step_files_are_stored_but_marked_unread():
     """3D reading is deferred; recognising the kind now keeps it a later feature."""
     assert classify_attachment("model.STEP", None, 50_000) == AttachmentKind.STEP.value
     assert classify_attachment("part.stp", None, 50_000) == AttachmentKind.STEP.value
+
+
+# --------------------------------------------------------------------------
+# Attachments that arrived without content
+# --------------------------------------------------------------------------
+def test_two_unfetchable_attachments_both_survive(db):
+    """Every empty byte string has the same hash, so deduping on it would
+    drop the second drawing off an enquiry without saying anything."""
+    result = ingest_message(
+        db,
+        GraphMessage(
+            message_id="empty-attachments-1",
+            subject="RFQ — two drawings",
+            body_text="Please quote both.",
+            sender_email="buyer@customer.example",
+            sender_name="A Buyer",
+            received_at=datetime.now(UTC),
+            categories=["RFQ"],
+            attachments=[
+                GraphAttachment("first.pdf", "application/pdf", b""),
+                GraphAttachment("second.pdf", "application/pdf", b""),
+            ],
+        ),
+    )
+    db.commit()
+
+    assert result.attachments_stored == 2
+    assert {a.filename for a in result.enquiry.attachments} == {"first.pdf", "second.pdf"}
+
+
+def test_the_same_file_twice_is_still_deduplicated(db):
+    pdf = b"%PDF-1.4 real bytes"
+    result = ingest_message(
+        db,
+        GraphMessage(
+            message_id="duplicate-attachment-1",
+            subject="RFQ",
+            body_text="Quote please.",
+            sender_email="buyer@customer.example",
+            sender_name="A Buyer",
+            received_at=datetime.now(UTC),
+            categories=["RFQ"],
+            attachments=[
+                GraphAttachment("drawing.pdf", "application/pdf", pdf),
+                GraphAttachment("drawing-copy.pdf", "application/pdf", pdf),
+            ],
+        ),
+    )
+    db.commit()
+    assert result.attachments_stored == 1
+
+
+def test_unfetchable_attachments_do_not_make_enquiries_look_like_duplicates(db):
+    """Otherwise two unrelated jobs, each with a drawing the server could not
+    hand over, get flagged as the same RFQ."""
+
+    def send(message_id, filename):
+        return ingest_message(
+            db,
+            GraphMessage(
+                message_id=message_id,
+                subject=f"RFQ {message_id}",
+                body_text="Quote please.",
+                sender_email="buyer@customer.example",
+                sender_name="A Buyer",
+                received_at=datetime.now(UTC),
+                categories=["RFQ"],
+                attachments=[GraphAttachment(filename, "application/pdf", b"")],
+            ),
+        ).enquiry
+
+    send("unrelated-a", "job-a.pdf")
+    second = send("unrelated-b", "job-b.pdf")
+    db.commit()
+
+    assert duplicate_attachment_matches(db, second) == []
