@@ -149,19 +149,41 @@ def main() -> int:
                 ok(f"The '{settings.graph_rfq_category}' category exists in this mailbox")
             else:
                 category_ok = False
-                fail(
-                    f"No category named '{settings.graph_rfq_category}' in this mailbox",
-                    f"""
+                wanted = settings.graph_rfq_category
+                # The failure worth naming precisely: a category that looks
+                # right to a human and does not match. Graph compares exactly,
+                # so 'Rfq' and 'RFQ ' are different categories from 'RFQ' and
+                # nothing is ever picked up, with no error anywhere.
+                near = [
+                    name
+                    for name in categories
+                    if name != wanted and name.strip().casefold() == wanted.strip().casefold()
+                ]
+                if near:
+                    hint = f"""
+                    This mailbox has {" and ".join(repr(n) for n in near)}, which
+                    is not the same category as {wanted!r}. Outlook compares the
+                    name exactly — case and spaces included.
+
+                    Either rename the category in Outlook, or set
+                    AQM_GRAPH_RFQ_CATEGORY to match what is already there.
+                    """
+                else:
+                    hint = """
                     Nothing will ever be picked up until this is fixed, and it
                     will fail silently — mail arrives, nothing happens.
 
                     Either create the category in Outlook on the shared
                     mailbox, or set AQM_GRAPH_RFQ_CATEGORY to one that exists.
 
-                    Categories found: {", ".join(categories) or "(none defined)"}
-
-                    Note the name is case-sensitive: 'RFQ' and 'Rfq' are
-                    different categories.
+                    Note the name is compared exactly: 'RFQ', 'Rfq' and
+                    'RFQ ' are three different categories.
+                    """
+                fail(
+                    f"No category named '{wanted}' in this mailbox",
+                    hint
+                    + f"""
+                    Categories in this mailbox: {", ".join(categories) or "(none defined)"}
                     """,
                 )
         except GraphError as exc:
