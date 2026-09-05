@@ -262,3 +262,84 @@ def test_unfetchable_attachments_do_not_make_enquiries_look_like_duplicates(db):
     db.commit()
 
     assert duplicate_attachment_matches(db, second) == []
+
+
+# --------------------------------------------------------------------------
+# Signing in as a person rather than as the app
+# --------------------------------------------------------------------------
+def graph_settings(tmp_path, **overrides):
+    from app.config import Settings
+
+    values = {
+        "graph_tenant_id": "tenant-1",
+        "graph_client_id": "client-1",
+        "graph_quoting_mailbox": "sales@example.test",
+        "graph_token_cache": str(tmp_path / "token.json"),
+    }
+    values.update(overrides)
+    return Settings(**values)
+
+
+def test_user_mode_needs_no_client_secret(tmp_path):
+    """A public client that holds a secret is a leak waiting to happen, so
+    user mode must not demand one."""
+    from app.services.graph import GraphClient
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    client._require_config()  # must not raise
+
+
+def test_app_mode_still_demands_a_client_secret(tmp_path):
+    from app.services.graph import GraphClient, GraphNotConfigured
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="app"))
+    with pytest.raises(GraphNotConfigured, match="CLIENT_SECRET"):
+        client._require_config()
+
+
+def test_user_mode_with_nobody_signed_in_says_so(tmp_path):
+    from app.services.graph import GraphClient, GraphNeedsSignIn
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    with pytest.raises(GraphNeedsSignIn, match="sign_in"):
+        client.token()
+
+
+def test_the_refresh_token_is_kept_privately(tmp_path):
+    from app.services.graph import GraphClient
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    client._write_refresh_token({"refresh_token": "secret-value"})
+
+    path = tmp_path / "token.json"
+    assert client._read_refresh_token() == "secret-value"
+    # Readable by its owner and nobody else, like any other standing key.
+    assert oct(path.stat().st_mode)[-3:] == "600"
+
+
+def test_an_unreadable_token_cache_is_treated_as_no_sign_in(tmp_path):
+    from app.services.graph import GraphClient
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    (tmp_path / "token.json").write_text("not json at all")
+    assert client._read_refresh_token() is None
+
+
+def test_a_rotated_refresh_token_replaces_the_old_one(tmp_path):
+    """Microsoft issues a new refresh token each time one is used. Keeping it
+    is what makes the sign-in last indefinitely instead of expiring."""
+    from app.services.graph import GraphClient
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    client._write_refresh_token({"refresh_token": "first"})
+    client._write_refresh_token({"refresh_token": "second"})
+    assert client._read_refresh_token() == "second"
+
+
+def test_a_response_without_a_refresh_token_leaves_the_saved_one_alone(tmp_path):
+    from app.services.graph import GraphClient
+
+    client = GraphClient(graph_settings(tmp_path, graph_auth_mode="user"))
+    client._write_refresh_token({"refresh_token": "keep-me"})
+    client._write_refresh_token({"access_token": "no refresh here"})
+    assert client._read_refresh_token() == "keep-me"

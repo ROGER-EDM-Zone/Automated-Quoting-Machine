@@ -75,6 +75,20 @@ class Settings(BaseSettings):
     #: own domain is always included.
     internal_email_domains: list[str] = Field(default_factory=list)
     graph_webhook_client_state: str | None = None
+    #: How the app proves who it is to Microsoft.
+    #:
+    #: ``app``  — the app has an identity of its own and works unattended.
+    #:           Needs an administrator to register it and consent to
+    #:           application permissions. The right answer for production.
+    #: ``user`` — a person signs in once and the app keeps the resulting
+    #:           token, acting as them. No administrator, no consent, and no
+    #:           client secret to look after at all. It can only see what that
+    #:           person can see, and the sign-in has to be repeated if the app
+    #:           sits idle for months.
+    graph_auth_mode: str = "app"
+    #: Where the refresh token is kept in ``user`` mode. Treat as a password:
+    #: written 0600 and never committed.
+    graph_token_cache: str = "./graph_token.json"
 
     # --- Auth (Entra ID SSO) ---
     auth_required: bool = False

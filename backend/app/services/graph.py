@@ -3,13 +3,37 @@
 Two jobs: receive tagged mail from the shared quoting mailbox, and put a draft
 reply into the estimator's mailbox. It never sends anything — `createReply`
 leaves the message in Drafts and a human presses send.
+
+There are two ways it can prove who it is, and which one to use is a question
+about the business rather than about the code:
+
+``app`` mode
+    The app holds an identity of its own and works unattended forever. It
+    needs an administrator to register it and consent to *application*
+    permissions, and those permissions reach every mailbox in the tenant
+    unless somebody scopes them. This is the production answer.
+
+``user`` mode
+    A person signs in once, in a browser, and the app keeps the token that
+    results. No administrator, no consent screen, and — the part that matters
+    most — no client secret in existence to be emailed around or leaked. The
+    app can see exactly what that person can see and nothing else, which is
+    its own kind of safety. The trade is that the sign-in has to be repeated
+    if the app goes unused for months.
+
+Both modes talk to the same endpoints and return the same objects, so nothing
+downstream knows or cares which is in use.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -24,6 +48,15 @@ LOGIN_ROOT = "https://login.microsoftonline.com"
 #: Graph caps mail subscriptions at roughly three days; renew well inside that.
 SUBSCRIPTION_MINUTES = 4230
 
+#: What `user` mode asks for. `offline_access` is what makes the sign-in last
+#: beyond the hour an access token lives — without it the app would need
+#: somebody at a keyboard every hour, which is not automation.
+USER_SCOPES = (
+    "https://graph.microsoft.com/Mail.Read "
+    "https://graph.microsoft.com/Mail.ReadWrite "
+    "offline_access"
+)
+
 
 class GraphError(Exception):
     pass
@@ -31,6 +64,10 @@ class GraphError(Exception):
 
 class GraphNotConfigured(GraphError):
     pass
+
+
+class GraphNeedsSignIn(GraphError):
+    """`user` mode with no usable token. A person has to sign in again."""
 
 
 @dataclass
@@ -60,25 +97,34 @@ class GraphClient:
 
     # -- auth -----------------------------------------------------------
     def _require_config(self) -> None:
-        missing = [
-            name
-            for name, value in (
-                ("AQM_GRAPH_TENANT_ID", self.settings.graph_tenant_id),
-                ("AQM_GRAPH_CLIENT_ID", self.settings.graph_client_id),
-                ("AQM_GRAPH_CLIENT_SECRET", self.settings.graph_client_secret),
-                ("AQM_GRAPH_QUOTING_MAILBOX", self.settings.graph_quoting_mailbox),
-            )
-            if not value
+        required = [
+            ("AQM_GRAPH_TENANT_ID", self.settings.graph_tenant_id),
+            ("AQM_GRAPH_CLIENT_ID", self.settings.graph_client_id),
+            ("AQM_GRAPH_QUOTING_MAILBOX", self.settings.graph_quoting_mailbox),
         ]
+        # In `user` mode there is no client secret and there is not meant to
+        # be one: a public client that holds a secret is a public client with
+        # a leak waiting to happen.
+        if not self.is_user_mode:
+            required.append(("AQM_GRAPH_CLIENT_SECRET", self.settings.graph_client_secret))
+
+        missing = [name for name, value in required if not value]
         if missing:
             raise GraphNotConfigured(f"Graph is not configured: {', '.join(missing)} unset")
+
+    @property
+    def is_user_mode(self) -> bool:
+        return self.settings.graph_auth_mode == "user"
 
     def token(self) -> str:
         self._require_config()
         now = datetime.now(UTC)
         if self._token and self._token_expires and now < self._token_expires:
             return self._token
+        return self._sign_in_as_user() if self.is_user_mode else self._sign_in_as_app()
 
+    # -- app mode: the app has its own identity ---------------------------
+    def _sign_in_as_app(self) -> str:
         response = httpx.post(
             f"{LOGIN_ROOT}/{self.settings.graph_tenant_id}/oauth2/v2.0/token",
             data={
@@ -91,9 +137,129 @@ class GraphClient:
         )
         if response.status_code != 200:
             raise GraphError(f"Token request failed: {response.status_code} {response.text}")
+        return self._store_token(response.json())
+
+    # -- user mode: somebody signed in once -------------------------------
+    def _token_cache_path(self) -> Path:
+        return Path(self.settings.graph_token_cache)
+
+    def _read_refresh_token(self) -> str | None:
+        path = self._token_cache_path()
+        if not path.exists():
+            return None
+        try:
+            return json.loads(path.read_text()).get("refresh_token")
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def _write_refresh_token(self, payload: dict[str, Any]) -> None:
+        """Keep the refresh token, and only that, readable by nobody else.
+
+        A refresh token is a standing key to the mailbox, so it is written the
+        way a private key is: 0600, and never anywhere near the repository.
+        """
+        refresh = payload.get("refresh_token")
+        if not refresh:
+            return
+        path = self._token_cache_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "refresh_token": refresh,
+                    "signed_in_at": datetime.now(UTC).isoformat(),
+                    "tenant": self.settings.graph_tenant_id,
+                    "client_id": self.settings.graph_client_id,
+                }
+            )
+        )
+        try:
+            os.chmod(path, 0o600)
+        except OSError:  # pragma: no cover - Windows and odd filesystems
+            logger.warning("Could not restrict permissions on %s", path)
+
+    def _sign_in_as_user(self) -> str:
+        refresh = self._read_refresh_token()
+        if not refresh:
+            raise GraphNeedsSignIn("Nobody has signed in yet. Run: python -m scripts.sign_in")
+
+        response = httpx.post(
+            f"{LOGIN_ROOT}/{self.settings.graph_tenant_id}/oauth2/v2.0/token",
+            data={
+                "client_id": self.settings.graph_client_id,
+                "refresh_token": refresh,
+                "grant_type": "refresh_token",
+                "scope": USER_SCOPES,
+            },
+            timeout=30,
+        )
+        if response.status_code != 200:
+            raise GraphNeedsSignIn(
+                "The saved sign-in is no longer valid — the password may have "
+                "changed, or it has gone unused too long. "
+                "Run: python -m scripts.sign_in\n"
+                f"({response.status_code} {response.text[:300]})"
+            )
         payload = response.json()
+        # Microsoft rotates the refresh token on each use; keeping the new one
+        # is what makes the sign-in last indefinitely rather than 90 days.
+        self._write_refresh_token(payload)
+        return self._store_token(payload)
+
+    def begin_device_login(self) -> dict[str, Any]:
+        """Ask Microsoft for a code the person types into their browser."""
+        self._require_config()
+        response = httpx.post(
+            f"{LOGIN_ROOT}/{self.settings.graph_tenant_id}/oauth2/v2.0/devicecode",
+            data={"client_id": self.settings.graph_client_id, "scope": USER_SCOPES},
+            timeout=30,
+        )
+        if response.status_code != 200:
+            raise GraphError(
+                f"Could not start sign-in: {response.status_code} {response.text[:400]}"
+            )
+        return response.json()
+
+    def complete_device_login(self, device: dict[str, Any]) -> str:
+        """Wait for the person to finish signing in, then keep the token."""
+        interval = int(device.get("interval", 5))
+        deadline = time.monotonic() + int(device.get("expires_in", 900))
+
+        while time.monotonic() < deadline:
+            time.sleep(interval)
+            response = httpx.post(
+                f"{LOGIN_ROOT}/{self.settings.graph_tenant_id}/oauth2/v2.0/token",
+                data={
+                    "client_id": self.settings.graph_client_id,
+                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                    "device_code": device["device_code"],
+                },
+                timeout=30,
+            )
+            if response.status_code == 200:
+                payload = response.json()
+                self._write_refresh_token(payload)
+                return self._store_token(payload)
+
+            error = response.json().get("error", "")
+            if error == "authorization_pending":
+                continue
+            if error == "slow_down":
+                interval += 5
+                continue
+            if error == "expired_token":
+                raise GraphError("The sign-in code expired. Start again.")
+            if error == "authorization_declined":
+                raise GraphError("Sign-in was declined in the browser.")
+            raise GraphError(f"Sign-in failed: {response.text[:400]}")
+
+        raise GraphError("Timed out waiting for the sign-in to be completed.")
+
+    def _store_token(self, payload: dict[str, Any]) -> str:
         self._token = payload["access_token"]
-        self._token_expires = now + timedelta(seconds=payload.get("expires_in", 3600) - 120)
+        self._token_expires = datetime.now(UTC) + timedelta(
+            seconds=payload.get("expires_in", 3600) - 120
+        )
         return self._token
 
     def _request(self, method: str, path: str, **kwargs) -> httpx.Response:

@@ -19,7 +19,12 @@ from __future__ import annotations
 import argparse
 
 from app.config import get_settings
-from app.services.graph import GraphError, GraphNotConfigured, get_graph_client
+from app.services.graph import (
+    GraphError,
+    GraphNeedsSignIn,
+    GraphNotConfigured,
+    get_graph_client,
+)
 
 TICK = "  \033[32m✓\033[0m"
 CROSS = "  \033[31m✗\033[0m"
@@ -53,16 +58,15 @@ def main() -> int:
     print("\nChecking the Outlook connection\n")
 
     # --- 1. settings ------------------------------------------------------
-    missing = [
-        name
-        for name, value in (
-            ("AQM_GRAPH_TENANT_ID", settings.graph_tenant_id),
-            ("AQM_GRAPH_CLIENT_ID", settings.graph_client_id),
-            ("AQM_GRAPH_CLIENT_SECRET", settings.graph_client_secret),
-            ("AQM_GRAPH_QUOTING_MAILBOX", settings.graph_quoting_mailbox),
-        )
-        if not value
+    user_mode = settings.graph_auth_mode == "user"
+    required = [
+        ("AQM_GRAPH_TENANT_ID", settings.graph_tenant_id),
+        ("AQM_GRAPH_CLIENT_ID", settings.graph_client_id),
+        ("AQM_GRAPH_QUOTING_MAILBOX", settings.graph_quoting_mailbox),
     ]
+    if not user_mode:
+        required.append(("AQM_GRAPH_CLIENT_SECRET", settings.graph_client_secret))
+    missing = [name for name, value in required if not value]
     if missing:
         fail(
             f"{len(missing)} setting(s) missing: {', '.join(missing)}",
@@ -73,7 +77,7 @@ def main() -> int:
             """,
         )
         return 1
-    ok("All four Graph settings are present")
+    ok(f"Settings present ({'sign-in-once' if user_mode else 'app identity'} mode)")
     note(f"mailbox: {settings.graph_quoting_mailbox}")
     note(f"category: {settings.graph_rfq_category or '(none — every message qualifies)'}")
 
@@ -83,6 +87,15 @@ def main() -> int:
     try:
         client.token()
         ok("Signed in to Microsoft Graph")
+    except GraphNeedsSignIn as exc:
+        fail(
+            str(exc),
+            """
+            This mode needs somebody to sign in once, in a browser:
+                python -m scripts.sign_in
+            """,
+        )
+        return 1
     except GraphNotConfigured as exc:
         fail(str(exc), "Fill in the missing setting and run this again.")
         return 1

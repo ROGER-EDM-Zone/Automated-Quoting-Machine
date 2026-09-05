@@ -17,3 +17,4 @@ storage/
 .coverage
 htmlcov/
 dist-demo/
+graph_token.json
