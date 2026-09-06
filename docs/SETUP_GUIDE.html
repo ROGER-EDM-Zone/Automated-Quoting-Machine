@@ -1,0 +1,771 @@
+<title>Getting the Quoting App Running</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --paper: #e7ecef;
+    --surface: #f8fafb;
+    --surface-2: #eef2f4;
+    --ink: #151b21;
+    --ink-soft: #46525b;
+    --ink-faint: #78868f;
+    --rule: #c9d3d9;
+    --rule-soft: #dde4e8;
+    --copper: #9a5528;
+    --warn: #8a5a00;
+    --warn-bg: #fbf1de;
+    --danger: #a32b1f;
+    --danger-bg: #fbeae7;
+    --ok: #1e6b45;
+    --ok-bg: #e6f2eb;
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10151a; --surface: #171d23; --surface-2: #1e262d;
+      --ink: #e4eaee; --ink-soft: #adbac3; --ink-faint: #7a8790;
+      --rule: #2e3941; --rule-soft: #242d34; --copper: #d2854f;
+      --warn: #d7a45c; --warn-bg: #2a2216;
+      --danger: #e5806f; --danger-bg: #2d1a17;
+      --ok: #63b98c; --ok-bg: #16261e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10151a; --surface: #171d23; --surface-2: #1e262d;
+    --ink: #e4eaee; --ink-soft: #adbac3; --ink-faint: #7a8790;
+    --rule: #2e3941; --rule-soft: #242d34; --copper: #d2854f;
+    --warn: #d7a45c; --warn-bg: #2a2216;
+    --danger: #e5806f; --danger-bg: #2d1a17;
+    --ok: #63b98c; --ok-bg: #16261e;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-body); font-size: 16.5px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 40px 22px 90px; }
+
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11.5px;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--copper); margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(28px, 5.5vw, 40px); line-height: 1.1;
+    letter-spacing: -.02em; margin: 0 0 16px; text-wrap: balance;
+  }
+  .standfirst { font-size: 17.5px; color: var(--ink-soft); margin: 0 0 12px; max-width: 60ch; }
+
+  /* Time budget up front — the first thing anyone wants to know. */
+  .budget {
+    display: flex; gap: 0; flex-wrap: wrap; margin: 28px 0 8px;
+    border: 1px solid var(--rule); border-radius: 6px; overflow: hidden;
+    background: var(--surface);
+  }
+  .budget div {
+    flex: 1 1 140px; padding: 13px 16px;
+    border-right: 1px solid var(--rule-soft);
+  }
+  .budget div:last-child { border-right: none; }
+  .budget .t {
+    font-family: var(--font-mono); font-size: 19px; font-weight: 600;
+    color: var(--copper); display: block; line-height: 1.2;
+  }
+  .budget .l { font-size: 13px; color: var(--ink-soft); }
+
+  /* Stage headers */
+  .stage {
+    margin: 52px 0 6px; padding-top: 18px;
+    border-top: 2px solid var(--ink);
+    display: flex; align-items: baseline; gap: 13px; flex-wrap: wrap;
+  }
+  .stage-n {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    letter-spacing: .1em; color: var(--paper); background: var(--ink);
+    padding: 3px 9px; border-radius: 3px;
+  }
+  .stage h2 {
+    font-family: var(--font-display); font-weight: 700; font-size: 23px;
+    margin: 0; letter-spacing: -.01em;
+  }
+  .stage .mins {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--copper); margin-left: auto;
+  }
+  .stage-intro { color: var(--ink-soft); margin: 6px 0 26px; max-width: 62ch; }
+
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.steps > li {
+    counter-increment: step; position: relative;
+    padding: 0 0 28px 46px;
+    border-left: 1px solid var(--rule); margin-left: 13px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 6px; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute; left: -14px; top: -3px;
+    width: 27px; height: 27px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--rule);
+    color: var(--ink); font-family: var(--font-mono);
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps h3 {
+    font-family: var(--font-display); font-weight: 600; font-size: 17px;
+    margin: 2px 0 8px;
+  }
+  ol.steps p { margin: 0 0 10px; color: var(--ink-soft); }
+  ol.steps p:last-child { margin-bottom: 0; }
+  ol.steps ul { margin: 0 0 10px; padding-left: 20px; color: var(--ink-soft); }
+  ol.steps ul li { margin-bottom: 5px; }
+
+  .click {
+    font-family: var(--font-mono); font-size: 13px;
+    background: var(--surface); border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--copper);
+    padding: 9px 13px; margin: 0 0 11px;
+    overflow-x: auto;
+  }
+  .type {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+    background: var(--surface-2); border: 1px dashed var(--copper);
+    padding: 9px 14px; margin: 0 0 11px; border-radius: 4px;
+    display: inline-block;
+  }
+
+  code {
+    font-family: var(--font-mono); font-size: .87em;
+    background: var(--surface); padding: 1.5px 5px; border-radius: 3px;
+    border: 1px solid var(--rule-soft);
+  }
+  pre {
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65;
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: 13px 15px; border-radius: 5px; overflow-x: auto; margin: 0 0 12px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  .cmt { color: var(--ink-faint); }
+
+  .note {
+    padding: 13px 17px; margin: 0 0 13px;
+    border-left: 3px solid var(--copper); background: var(--surface-2);
+    font-size: 14.5px; color: var(--ink-soft);
+  }
+  .note strong { color: var(--ink); }
+  .note p { margin: 0 0 8px; }
+  .note p:last-child { margin: 0; }
+  .note .head {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: 6px; color: var(--copper);
+  }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note.warn .head { color: var(--warn); }
+  .note.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+  .note.danger .head { color: var(--danger); }
+  .note.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+  .note.ok .head { color: var(--ok); }
+
+  .expect {
+    border: 1px solid var(--ok); background: var(--ok-bg);
+    border-radius: 5px; padding: 11px 15px; margin: 0 0 12px;
+    font-size: 14px; color: var(--ink-soft);
+  }
+  .expect .head {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ok); margin-bottom: 5px;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule-soft); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; }
+  .table-wrap { overflow-x: auto; }
+
+  a { color: var(--copper); text-underline-offset: 2px; word-break: break-word; }
+
+  .trouble { margin-top: 54px; padding-top: 20px; border-top: 2px solid var(--ink); }
+  .trouble h2 { font-family: var(--font-display); font-size: 23px; margin: 0 0 8px; }
+  .trouble h3 {
+    font-family: var(--font-display); font-size: 15.5px;
+    margin: 22px 0 6px; color: var(--ink);
+  }
+  .trouble p { color: var(--ink-soft); margin: 0 0 8px; }
+
+  @media print {
+    body { background: #fff; font-size: 10.5pt; }
+    .wrap { max-width: none; padding: 0; }
+    ol.steps > li, .note, pre, .expect { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">EDM Zone · Quoting automation</p>
+  <h1>Getting the quoting app running on your PC</h1>
+  <p class="standfirst">
+    Every step, in order, with what you should see after each one. Follow it
+    top to bottom. Nothing here needs anyone technical.
+  </p>
+  <p class="standfirst">
+    Do it in one sitting if you can — about an hour. If you have to stop, stop
+    at the end of a stage rather than partway through one.
+  </p>
+
+  <div class="budget">
+    <div><span class="t">5 min</span><span class="l">A · Outlook</span></div>
+    <div><span class="t">10 min</span><span class="l">B · Microsoft sign-up</span></div>
+    <div><span class="t">15 min</span><span class="l">C · Install on the PC</span></div>
+    <div><span class="t">10 min</span><span class="l">D · Connect it</span></div>
+    <div><span class="t">10 min</span><span class="l">E · First real RFQ</span></div>
+  </div>
+
+  <div class="note warn">
+    <div class="head">Before you start — one thing that costs money</div>
+    <p>
+      Stage C asks for an <strong>Anthropic API key</strong>. That is what pays
+      for reading drawings, and it is billed on usage — roughly a few pence per
+      drawing. You put a card on the account and set a monthly cap.
+    </p>
+    <p>
+      You can skip it and come back. Without it everything works except reading
+      drawings automatically: enquiries still arrive, and you can still type the
+      details in and let it price them.
+    </p>
+  </div>
+
+  <!-- ============ A ============ -->
+  <div class="stage">
+    <span class="stage-n">STAGE A</span>
+    <h2>Set up the tag in Outlook</h2>
+    <span class="mins">5 minutes</span>
+  </div>
+  <p class="stage-intro">
+    This is the switch that decides what the app looks at. Only emails you tag
+    <strong>RFQ</strong> are ever read — everything else in the mailbox is
+    invisible to it.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h3>Open the sales mailbox in Outlook</h3>
+      <p>
+        Not your own inbox — <strong>sales@edmzone.co.uk</strong>. In the folder
+        list down the left, click into the sales mailbox so you are looking at
+        its messages.
+      </p>
+      <div class="note warn">
+        <div class="head">Why this matters</div>
+        <p>
+          Tags belong to a mailbox. If you make it while looking at your own
+          inbox, it lands on your list and the app will never see it.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Create the tag</h3>
+      <p>Right-click any email in that mailbox, then:</p>
+      <div class="click">Categorise → All Categories → New</div>
+      <p>Type the name exactly:</p>
+      <div class="type">RFQ</div>
+      <p>
+        Three capital letters. No space after. Pick any colour you like — the
+        colour makes no difference to the app, only to your eyes.
+      </p>
+      <p>Click OK, then OK again.</p>
+      <div class="note danger">
+        <div class="head">Get this exactly right</div>
+        <p>
+          <code>Rfq</code>, <code>rfq</code> or <code>RFQ&nbsp;</code> with a
+          trailing space are all different tags as far as Microsoft is concerned.
+          If it is wrong, nothing happens and nothing tells you — mail arrives,
+          the app looks for <code>RFQ</code>, finds nothing, and stays quiet.
+        </p>
+        <p>
+          The connection check in Stage D catches this and names it. But it is
+          easier to get right now.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Tag one real RFQ, ready for later</h3>
+      <p>
+        Find a genuine RFQ that arrived recently — one with a drawing attached is
+        ideal. Right-click it, Categorise, RFQ.
+      </p>
+      <p>That is your test message for Stage E. Leave it there.</p>
+      <div class="expect">
+        <div class="head">You should now see</div>
+        A coloured RFQ label on that email in the sales mailbox.
+      </div>
+    </li>
+  </ol>
+
+  <!-- ============ B ============ -->
+  <div class="stage">
+    <span class="stage-n">STAGE B</span>
+    <h2>Give the app permission to read that mailbox</h2>
+    <span class="mins">10 minutes</span>
+  </div>
+  <p class="stage-intro">
+    This is Microsoft's side. You are registering the app so it can ask for
+    access, then signing in yourself to grant it. It is all on one website and
+    you need nothing from anyone else.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h3>Open the Microsoft admin page</h3>
+      <p>Go to:</p>
+      <div class="click">https://entra.microsoft.com</div>
+      <p>
+        Sign in with your normal EDM Zone account. If it says you do not have
+        access, you are not an administrator — stop here and tell me, there is a
+        different route.
+      </p>
+    </li>
+
+    <li>
+      <h3>Start a new registration</h3>
+      <p>Down the left-hand side:</p>
+      <div class="click">Applications → App registrations → + New registration</div>
+      <p>Fill in the form:</p>
+      <ul>
+        <li><strong>Name:</strong> <code>EDM Zone Quoting</code></li>
+        <li>
+          <strong>Supported account types:</strong> the first option —
+          <em>Accounts in this organizational directory only</em>
+        </li>
+        <li><strong>Redirect URI:</strong> leave completely blank</li>
+      </ul>
+      <p>Click <strong>Register</strong>.</p>
+    </li>
+
+    <li>
+      <h3>Copy the two ID numbers</h3>
+      <p>
+        The page that appears has two long numbers near the top. Copy both into
+        Notepad — you need them in Stage C.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>On the screen</th><th>Looks like</th></tr></thead>
+          <tbody>
+            <tr><td>Application (client) ID</td><td>a string of letters, numbers and dashes</td></tr>
+            <tr><td>Directory (tenant) ID</td><td>should be 2a4247d5-e81d-4869-84f7-d84d64122c7b</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note ok">
+        <div class="head">These two are safe</div>
+        <p>
+          Neither is a password. They identify the app but grant nothing on their
+          own, so it is fine to email them or paste them to me.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Turn on the sign-in method</h3>
+      <p>In the menu down the left of this app's page:</p>
+      <div class="click">Authentication → scroll to the bottom → Advanced settings</div>
+      <p>
+        Find <strong>Allow public client flows</strong> and switch it to
+        <strong>Yes</strong>. Click <strong>Save</strong> at the top.
+      </p>
+      <div class="note warn">
+        <div class="head">The step everyone misses</div>
+        <p>
+          Skip this and Stage D fails with an unhelpful message about clients.
+          If that happens, come back here — this is almost always why.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Say what the app may do</h3>
+      <div class="click">API permissions → + Add a permission → Microsoft Graph</div>
+      <p>
+        You are then asked to choose between two kinds. Choose
+        <strong>Delegated permissions</strong>.
+      </p>
+      <p>
+        In the search box that appears, type <code>Mail.Read</code> and tick it.
+        Then clear the box, type <code>Mail.ReadWrite</code> and tick that too.
+        Click <strong>Add permissions</strong>.
+      </p>
+      <div class="expect">
+        <div class="head">You should now see</div>
+        Two rows in the list: Mail.Read and Mail.ReadWrite, both marked
+        <em>Delegated</em>. There may be a third called User.Read that was
+        already there — leave it.
+      </div>
+      <div class="note ok">
+        <div class="head">No "Grant admin consent" needed</div>
+        <p>
+          You may see that button. You do not need to press it. Delegated
+          permissions are granted by you when you sign in during Stage D, and the
+          app can only ever see what you can see.
+        </p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ============ C ============ -->
+  <div class="stage">
+    <span class="stage-n">STAGE C</span>
+    <h2>Put the app on your PC</h2>
+    <span class="mins">15 minutes</span>
+  </div>
+  <p class="stage-intro">
+    Mostly waiting for things to download. Do this on the PC that will be left
+    on — the app only runs while that machine is awake.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h3>Install Python</h3>
+      <p>
+        This is the engine the app runs on. Go to
+        <a href="https://www.python.org/downloads/">python.org/downloads</a> and
+        click the big yellow <strong>Download Python</strong> button.
+      </p>
+      <p>Run the file it downloads. On the very first screen of the installer:</p>
+      <div class="note danger">
+        <div class="head">Tick this box before clicking Install</div>
+        <p>
+          <strong>Add python.exe to PATH</strong> — it is a small tick box at the
+          bottom, and it is off by default. Without it the setup in step 4 will
+          not find Python and will stop.
+        </p>
+      </div>
+      <p>Then click <strong>Install Now</strong> and wait.</p>
+      <div class="note">
+        <div class="head">If Python is already on this PC</div>
+        <p>
+          Fine — the setup checks the version. It needs 3.11 or newer and will
+          tell you if what is there is too old.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Download the app</h3>
+      <p>Go to the project on GitHub:</p>
+      <div class="click">https://github.com/ROGER-EDM-Zone/Automated-Quoting-Machine</div>
+      <p>
+        Click the green <strong>Code</strong> button, then
+        <strong>Download ZIP</strong>.
+      </p>
+    </li>
+
+    <li>
+      <h3>Unblock it, then unzip it</h3>
+      <p>
+        Find the ZIP in your Downloads. <strong>Before opening it</strong>,
+        right-click it and choose <strong>Properties</strong>. At the bottom of
+        that window, if there is an <strong>Unblock</strong> tick box, tick it and
+        click OK.
+      </p>
+      <div class="note warn">
+        <div class="head">Why</div>
+        <p>
+          Windows marks everything downloaded from the internet as untrusted, and
+          that mark spreads to every file inside the ZIP. Unblocking now saves a
+          confusing failure later.
+        </p>
+      </div>
+      <p>
+        Now right-click the ZIP → <strong>Extract All</strong>. Put it somewhere
+        you will find again — <code>C:\EDMZone\Quoting</code> is a good choice.
+        Avoid Desktop and OneDrive folders.
+      </p>
+    </li>
+
+    <li>
+      <h3>Run the setup</h3>
+      <p>Open the folder you just extracted, go into <code>install</code>, and double-click:</p>
+      <div class="type">START-HERE-Setup.bat</div>
+      <p>
+        A black window opens and works through the steps, printing
+        <code>[ok]</code> as each one passes. The longest part is installing the
+        app's components — a few minutes on a first run.
+      </p>
+      <div class="expect">
+        <div class="head">You should end with</div>
+        <p style="margin:0">
+          <strong>Setup finished</strong> in green, and a new
+          <strong>EDM Zone Quoting</strong> shortcut on your Desktop.
+        </p>
+      </div>
+      <div class="note">
+        <div class="head">If it stops with a red message</div>
+        <p>
+          The message says what to fix. Sort that, then run the same file again —
+          starting over is always safe, it picks up where it left off.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Get an Anthropic key, for reading drawings</h3>
+      <p>
+        Go to <a href="https://console.anthropic.com">console.anthropic.com</a>,
+        create an account, and add a payment card under Billing. Set a monthly
+        spend limit while you are there — start low, £20 is plenty to begin with.
+      </p>
+      <div class="click">API keys → Create Key</div>
+      <p>
+        Copy the key it shows you. Like the client secret, it is shown once. It
+        starts <code>sk-ant-</code>.
+      </p>
+      <div class="note danger">
+        <div class="head">This one is a password</div>
+        <p>
+          Do not email it, and do not paste it into this chat. It goes straight
+          into the settings file in the next step.
+        </p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ============ D ============ -->
+  <div class="stage">
+    <span class="stage-n">STAGE D</span>
+    <h2>Connect it to the mailbox</h2>
+    <span class="mins">10 minutes</span>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <h3>Put your details in the settings file</h3>
+      <p>
+        In the app folder, go into <code>backend</code> and find the file called
+        <code>.env</code> — just a dot and "env", no name before it. Right-click
+        it → <strong>Open with</strong> → <strong>Notepad</strong>.
+      </p>
+      <p>Fill in the three blanks from Stages B and C:</p>
+<pre><code>AQM_GRAPH_TENANT_ID=<span class="cmt">paste the Directory (tenant) ID</span>
+AQM_GRAPH_CLIENT_ID=<span class="cmt">paste the Application (client) ID</span>
+AQM_ANTHROPIC_API_KEY=<span class="cmt">paste the sk-ant-... key</span></code></pre>
+      <p>
+        No quote marks, no spaces around the <code>=</code>. Everything else in
+        the file is already correct. Save and close.
+      </p>
+      <div class="note danger">
+        <div class="head">This file is now sensitive</div>
+        <p>
+          It holds a key that spends money and details that reach your mailbox.
+          Do not email it, do not copy it into OneDrive or SharePoint, and do not
+          paste its contents into a chat.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Sign in</h3>
+      <p>Back in the <code>install</code> folder, double-click:</p>
+      <div class="type">Sign-in.bat</div>
+      <p>
+        It shows a web address and a short code. Open that address in your
+        browser, type the code, and sign in
+        <strong>as sales@edmzone.co.uk</strong> — or as yourself if you can open
+        that mailbox from your own account.
+      </p>
+      <p>
+        Microsoft will ask you to confirm the app may read your mail. Say yes.
+        Then go back to the black window; it finishes on its own.
+      </p>
+      <div class="expect">
+        <div class="head">You should see</div>
+        <p style="margin:0">
+          <code>[ok] Signed in</code>, then
+          <code>[ok] Reading: Sales - EDM Zone</code>.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Check the connection</h3>
+      <p>Double-click:</p>
+      <div class="type">Check-connection.bat</div>
+      <p>
+        This walks the whole connection and stops at the first thing wrong. It is
+        read-only — it cannot change or send anything, so run it whenever you
+        like.
+      </p>
+      <div class="expect">
+        <div class="head">You want to see</div>
+        <p style="margin:0">
+          Green ticks all the way down, ending with the number of tagged messages
+          waiting — which should include the one you tagged in Stage A.
+        </p>
+      </div>
+      <div class="note">
+        <div class="head">If anything is red</div>
+        <p>
+          Read it — it names the problem and the fix. If it does not make sense,
+          send me the text and I will tell you what it means.
+        </p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ============ E ============ -->
+  <div class="stage">
+    <span class="stage-n">STAGE E</span>
+    <h2>Start it, and watch a real RFQ come through</h2>
+    <span class="mins">10 minutes</span>
+  </div>
+  <p class="stage-intro">
+    One thing to know before you look: <strong>it will not produce a price</strong>,
+    and that is right. There are no rates in it yet and it has no defaults, so it
+    refuses to quote rather than invent a figure. What you are testing here is
+    whether it reads your drawings properly.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h3>Start the app</h3>
+      <p>Double-click <strong>EDM Zone Quoting</strong> on your Desktop.</p>
+      <p>
+        A black window opens and stays open — that is the app running. Your
+        browser opens by itself at <code>http://localhost:8000</code> after a few
+        seconds.
+      </p>
+      <div class="note warn">
+        <div class="head">Leave the black window open</div>
+        <p>
+          Closing it stops the app. Minimise it instead. If you close it by
+          accident, just double-click the Desktop shortcut again.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Watch the RFQ arrive</h3>
+      <p>
+        The app checks the mailbox every five minutes on its own. To see it now
+        rather than waiting, click <strong>Check for new enquiries</strong> at the
+        top of the queue.
+      </p>
+      <div class="expect">
+        <div class="head">You should see</div>
+        <p style="margin:0">
+          The email you tagged in Stage A appearing as a row in the queue, with
+          the customer, the subject and its drawings.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Open it and look properly</h3>
+      <p>
+        Click the subject to open it. This is the moment worth taking slowly —
+        what the AI read off the drawing, what it was unsure of, and what it
+        flagged.
+      </p>
+      <div class="note warn">
+        <div class="head">There will be no price, and that is correct</div>
+        <p>
+          You will see red <strong>blocking</strong> flags saying there is no
+          rate for milling, or turning, or wire. That is the app working as
+          designed, not a fault: it has no rates in it yet, and it has no
+          default rate anywhere in it. It refuses to quote rather than guess a
+          number nobody in your business chose.
+        </p>
+        <p>
+          Nothing prices until you put your hourly rates in on the
+          <strong>Rates</strong> screen. That is deliberately the next
+          conversation, because it depends on the one question I still need
+          answered — whether your £65/hour is what the customer pays or what an
+          hour costs you.
+        </p>
+      </div>
+      <p>
+        So what you are judging at this stage is only this: did it
+        <strong>read the drawing correctly</strong>? Material, quantity,
+        tolerance, dimensions, and what it says it was unsure about.
+      </p>
+      <div class="note ok">
+        <div class="head">Nothing can escape</div>
+        <p>
+          The app has no permission to send email. It can write a draft into
+          Outlook; a person has to open it and press send. That is enforced by
+          Microsoft, not by a setting I could get wrong.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Tell me how it did</h3>
+      <p>
+        Send me what it read versus what you would have said. That comparison is
+        the whole point of getting this far — it tells us whether this saves you
+        time or just gives you something new to check.
+      </p>
+      <p>Then we do the numbers: your rates, your allowance, your material prices.</p>
+    </li>
+  </ol>
+
+  <!-- ============ TROUBLE ============ -->
+  <div class="trouble">
+    <h2>If something goes wrong</h2>
+    <p>
+      Nothing here can break anything. The worst case is that it does not start,
+      and you delete the folder and try again.
+    </p>
+
+    <h3>"Python was not found" or the setup stops at step 1</h3>
+    <p>
+      The <em>Add python.exe to PATH</em> box was not ticked. Re-run the Python
+      installer, choose <strong>Modify</strong>, and tick it. Or uninstall Python
+      and install again, ticking it this time.
+    </p>
+
+    <h3>A wall of red text about "execution policy" or "not digitally signed"</h3>
+    <p>
+      You ran <code>Setup.ps1</code> directly. Run
+      <strong>START-HERE-Setup.bat</strong> instead — it exists precisely to get
+      round this.
+    </p>
+
+    <h3>Sign-in fails mentioning "unauthorized_client" or "public client"</h3>
+    <p>
+      <strong>Allow public client flows</strong> in Stage B step 4 is still off,
+      or Save was not clicked. Go back and check.
+    </p>
+
+    <h3>The check is green but no emails appear</h3>
+    <p>
+      Almost always the tag. Check it is exactly <code>RFQ</code>, that it is on
+      the sales mailbox rather than your own, and that at least one email
+      actually carries it. The connection check lists every tag it can see in
+      that mailbox — compare that list against what you expect.
+    </p>
+
+    <h3>The browser says it cannot reach localhost:8000</h3>
+    <p>
+      The app is not running. Check the black window is still open. If it closed
+      with a message, send it to me.
+    </p>
+
+    <h3>Anything else</h3>
+    <p>
+      Send me the text from the black window — all of it, not a summary. These
+      messages are written to say which of the several possible causes it is, and
+      that detail is the useful part.
+    </p>
+  </div>
+
+</div>

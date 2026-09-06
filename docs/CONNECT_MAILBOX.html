@@ -1,0 +1,507 @@
+<title>Connecting the Quoting App to sales@</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* Drawing-office palette, matching the project's other documents. */
+  :root {
+    --paper: #e7ecef;
+    --surface: #f8fafb;
+    --surface-2: #eef2f4;
+    --ink: #151b21;
+    --ink-soft: #46525b;
+    --ink-faint: #78868f;
+    --rule: #c9d3d9;
+    --rule-soft: #dde4e8;
+    --copper: #9a5528;
+    --copper-soft: #f4e9e1;
+    --warn: #8a5a00;
+    --warn-bg: #fbf1de;
+    --danger: #a32b1f;
+    --danger-bg: #fbeae7;
+    --ok: #1e6b45;
+    --ok-bg: #e6f2eb;
+
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10151a;
+      --surface: #171d23;
+      --surface-2: #1e262d;
+      --ink: #e4eaee;
+      --ink-soft: #adbac3;
+      --ink-faint: #7a8790;
+      --rule: #2e3941;
+      --rule-soft: #242d34;
+      --copper: #d2854f;
+      --copper-soft: #2a1d15;
+      --warn: #d7a45c;
+      --warn-bg: #2a2216;
+      --danger: #e5806f;
+      --danger-bg: #2d1a17;
+      --ok: #63b98c;
+      --ok-bg: #16261e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10151a;
+    --surface: #171d23;
+    --surface-2: #1e262d;
+    --ink: #e4eaee;
+    --ink-soft: #adbac3;
+    --ink-faint: #7a8790;
+    --rule: #2e3941;
+    --rule-soft: #242d34;
+    --copper: #d2854f;
+    --copper-soft: #2a1d15;
+    --warn: #d7a45c;
+    --warn-bg: #2a2216;
+    --danger: #e5806f;
+    --danger-bg: #2d1a17;
+    --ok: #63b98c;
+    --ok-bg: #16261e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 800px; margin: 0 auto; padding: 44px 24px 90px; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--copper); margin: 0 0 12px;
+  }
+  h1 {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(27px, 5vw, 38px); line-height: 1.12; letter-spacing: -.02em;
+    margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 17px; color: var(--ink-soft); margin: 0 0 14px; max-width: 60ch; }
+
+  /* Part headers: two audiences, and it must be obvious which is which. */
+  .part {
+    margin: 46px 0 22px;
+    padding-top: 18px;
+    border-top: 2px solid var(--ink);
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  .part-n {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    letter-spacing: .1em; color: var(--paper); background: var(--ink);
+    padding: 3px 9px; border-radius: 3px;
+  }
+  .part h2 {
+    font-family: var(--font-display); font-weight: 700; font-size: 22px;
+    margin: 0; letter-spacing: -.01em;
+  }
+  .part .who {
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--copper);
+    margin-left: auto;
+  }
+  .part-intro { color: var(--ink-soft); margin: 0 0 24px; max-width: 62ch; }
+
+  /* Steps carry their number as information — this is a real sequence. */
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 0; }
+  ol.steps > li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 26px 46px;
+    border-left: 1px solid var(--rule);
+    margin-left: 13px;
+  }
+  ol.steps > li:last-child { border-left-color: transparent; padding-bottom: 4px; }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute; left: -14px; top: -2px;
+    width: 27px; height: 27px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--rule);
+    color: var(--ink); font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.steps h3 {
+    font-family: var(--font-display); font-weight: 600; font-size: 16.5px;
+    margin: 2px 0 7px;
+  }
+  ol.steps p { margin: 0 0 9px; color: var(--ink-soft); }
+  ol.steps p:last-child { margin-bottom: 0; }
+
+  .path {
+    font-family: var(--font-mono); font-size: 13px;
+    background: var(--surface); border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--copper);
+    padding: 9px 13px; margin: 0 0 10px;
+    overflow-x: auto; white-space: nowrap;
+  }
+
+  code {
+    font-family: var(--font-mono); font-size: .875em;
+    background: var(--surface); padding: 1.5px 5px; border-radius: 3px;
+    border: 1px solid var(--rule-soft); color: var(--ink);
+  }
+  pre {
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6;
+    background: var(--surface); border: 1px solid var(--rule);
+    padding: 14px 16px; border-radius: 5px;
+    overflow-x: auto; margin: 0 0 12px;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: inherit; }
+  .cmt { color: var(--ink-faint); }
+
+  /* Values to copy: the thing an IT person scans for. */
+  .values { margin: 0 0 14px; border: 1px solid var(--rule); border-radius: 5px; overflow: hidden; }
+  .values div {
+    display: grid; grid-template-columns: minmax(120px, 190px) 1fr; gap: 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .values div:last-child { border-bottom: none; }
+  .values dt {
+    background: var(--surface-2); padding: 9px 13px; margin: 0;
+    font-size: 13px; font-weight: 600; color: var(--ink-soft);
+  }
+  .values dd {
+    background: var(--surface); padding: 9px 13px; margin: 0;
+    font-family: var(--font-mono); font-size: 12.5px; word-break: break-all;
+  }
+  @media (max-width: 560px) {
+    .values div { grid-template-columns: 1fr; }
+    .values dt { border-bottom: 1px solid var(--rule-soft); }
+  }
+
+  .note {
+    padding: 14px 18px; margin: 0 0 14px;
+    border-left: 3px solid var(--copper); background: var(--surface-2);
+    font-size: 14.5px; color: var(--ink-soft);
+  }
+  .note strong { color: var(--ink); }
+  .note p { margin: 0 0 9px; }
+  .note p:last-child { margin: 0; }
+  .note .head {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: 6px; color: var(--copper);
+  }
+
+  .note.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note.warn .head { color: var(--warn); }
+  .note.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+  .note.danger .head { color: var(--danger); }
+  .note.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+  .note.ok .head { color: var(--ok); }
+
+  ul.plain { margin: 0 0 12px; padding-left: 20px; color: var(--ink-soft); }
+  ul.plain li { margin-bottom: 6px; }
+
+  .after {
+    margin-top: 46px; padding: 22px 24px;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
+  }
+  .after h2 {
+    font-family: var(--font-display); font-size: 18px; margin: 0 0 12px;
+  }
+  .after ol { margin: 0; padding-left: 20px; color: var(--ink-soft); }
+  .after li { margin-bottom: 8px; }
+
+  a { color: var(--copper); text-underline-offset: 2px; }
+  h4 { font-family: var(--font-display); font-size: 14.5px; margin: 18px 0 8px; }
+
+  @media print {
+    body { background: #fff; font-size: 11pt; }
+    .wrap { max-width: none; padding: 0; }
+    ol.steps > li { break-inside: avoid; }
+    .note, pre, .values { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">EDM Zone · Quoting automation</p>
+  <h1>Connecting the quoting app to the sales mailbox</h1>
+  <p class="standfirst">
+    Everything else is built and working. This is the one remaining job: giving the
+    app permission to read <strong>sales@edmzone.co.uk</strong> on its own, so that
+    an email categorised <strong>RFQ</strong> becomes a priced draft quote without
+    anybody doing anything.
+  </p>
+  <p class="standfirst">
+    Part 1 is for Roger and takes about two minutes. Part 2 is for whoever looks
+    after EDM Zone's Microsoft 365 and takes about twenty.
+  </p>
+
+  <!-- ================= PART 1 ================= -->
+  <div class="part">
+    <span class="part-n">PART 1</span>
+    <h2>What Roger does</h2>
+    <span class="who">You</span>
+  </div>
+  <p class="part-intro">
+    Two things, both small. Neither needs anyone technical.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <h3>Make the RFQ category in the sales mailbox</h3>
+      <p>
+        In Outlook, open the <strong>sales@edmzone.co.uk</strong> mailbox — not your
+        own. Right-click any message, choose <strong>Categorise</strong>, then
+        <strong>All Categories</strong>, then <strong>New</strong>. Name it exactly:
+      </p>
+      <div class="path">RFQ</div>
+      <p>
+        Three capital letters, nothing else. No trailing space. The app compares the
+        name exactly, so <code>Rfq</code> or <code>RFQ&nbsp;</code> would silently
+        never match — mail would arrive and nothing would happen.
+      </p>
+      <p>
+        It has to be created <em>while you are in the sales mailbox</em>. Categories
+        belong to a mailbox, so one made in your own Outlook lands on your list, not
+        the shared one.
+      </p>
+    </li>
+
+    <li>
+      <h3>Send Part 2 of this page to your IT person</h3>
+      <p>
+        Everything they need is below, including the values specific to EDM Zone.
+        They do not need to understand the quoting app — only to create a login for
+        it and lock it to the one mailbox.
+      </p>
+      <p>
+        When they are done, they send you back <strong>two ID numbers and one
+        password</strong>. Read the box at the end of Part 2 before you pass those
+        on to me — the password in particular must not be typed into a chat or an
+        email.
+      </p>
+    </li>
+  </ol>
+
+  <div class="note ok">
+    <div class="head">What this does and does not allow</div>
+    <p>
+      The app will be able to <strong>read</strong> the sales mailbox and
+      <strong>write draft replies</strong> into it. That is all.
+    </p>
+    <p>
+      It is not being given permission to send email. That is deliberate and it is
+      enforced by Microsoft, not by a setting inside the app: without the send
+      permission, a quote physically cannot leave the building without a person
+      opening the draft and pressing send.
+    </p>
+  </div>
+
+  <!-- ================= PART 2 ================= -->
+  <div class="part">
+    <span class="part-n">PART 2</span>
+    <h2>What the IT administrator does</h2>
+    <span class="who">Your M365 admin</span>
+  </div>
+  <p class="part-intro">
+    This registers an application identity in Entra ID, gives it Microsoft Graph mail
+    permissions, and — importantly — restricts those permissions to a single mailbox.
+    You will need Global Administrator (or Application Administrator plus Exchange
+    Administrator) and about twenty minutes.
+  </p>
+
+  <div class="values">
+    <div><dt>Tenant</dt><dd>2a4247d5-e81d-4869-84f7-d84d64122c7b</dd></div>
+    <div><dt>Mailbox to allow</dt><dd>sales@edmzone.co.uk</dd></div>
+    <div><dt>Suggested app name</dt><dd>EDM Zone Quoting</dd></div>
+    <div><dt>Permissions needed</dt><dd>Mail.Read, Mail.ReadWrite (application)</dd></div>
+    <div><dt>Explicitly NOT needed</dt><dd>Mail.Send</dd></div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <h3>Register the application</h3>
+      <div class="path">entra.microsoft.com → Applications → App registrations → New registration</div>
+      <p>
+        Name it <code>EDM Zone Quoting</code>. For supported account types choose
+        <strong>Accounts in this organizational directory only</strong>. Leave the
+        redirect URI blank — this is a daemon using client credentials, there is no
+        interactive sign-in. Click <strong>Register</strong>.
+      </p>
+      <p>
+        From the overview page that appears, copy the
+        <strong>Application (client) ID</strong> and the
+        <strong>Directory (tenant) ID</strong>.
+      </p>
+    </li>
+
+    <li>
+      <h3>Create a client secret</h3>
+      <div class="path">Certificates &amp; secrets → Client secrets → New client secret</div>
+      <p>
+        Describe it <code>Quoting app</code> and set an expiry — 24 months is
+        reasonable. Whatever you choose, <strong>diary the expiry date</strong>: when
+        a secret expires the app stops reading mail, and the only symptom is that
+        nothing appears in the quoting queue.
+      </p>
+      <div class="note warn">
+        <div class="head">The step people get wrong</div>
+        <p>
+          Azure shows both a <strong>Value</strong> and a <strong>Secret ID</strong>.
+          You need the <strong>Value</strong>. It is displayed once, on this screen,
+          and can never be retrieved again — navigate away and you must delete the
+          secret and make another.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Add the Graph permissions</h3>
+      <div class="path">API permissions → Add a permission → Microsoft Graph → Application permissions</div>
+      <p>
+        Tick <strong>Mail.Read</strong> and <strong>Mail.ReadWrite</strong>, then
+        <strong>Add permissions</strong>.
+      </p>
+      <div class="note warn">
+        <div class="head">Application, not Delegated</div>
+        <p>
+          Microsoft Graph offers <em>Delegated</em> and <em>Application</em>
+          permissions on the same screen. Delegated means "acting as a signed-in
+          user" and will not work here — nobody is signed in at 6am when the RFQ
+          arrives. It must be <strong>Application permissions</strong>.
+        </p>
+      </div>
+      <p>
+        Then click <strong>Grant admin consent for EDM Zone Limited</strong> and
+        confirm. Adding the permissions is not enough on its own; without consent
+        every request is refused. The status column should read
+        <em>Granted for EDM Zone Limited</em> with a green tick against both rows.
+      </p>
+    </li>
+
+    <li>
+      <h3>Restrict it to the one mailbox</h3>
+      <p>
+        This step matters more than the rest. Graph application permissions are
+        <strong>tenant-wide by default</strong>: as registered above, the app can
+        read every mailbox in EDM Zone, not just sales@. Scoping it is what makes
+        this safe.
+      </p>
+      <p>
+        Microsoft's current mechanism is <strong>RBAC for Applications</strong> in
+        Exchange Online. (The older <code>New-ApplicationAccessPolicy</code> approach
+        still works but is legacy and is being retired — use this instead.)
+      </p>
+      <p>In Exchange Online PowerShell, connected as an Exchange administrator:</p>
+<pre><code><span class="cmt"># 1. Connect</span>
+Install-Module ExchangeOnlineManagement -Scope CurrentUser
+Connect-ExchangeOnline -UserPrincipalName you@edmzone.co.uk
+
+<span class="cmt"># 2. A scope containing only the sales mailbox</span>
+New-ManagementScope -Name "Quoting app - sales mailbox only" `
+  -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'sales@edmzone.co.uk'"
+
+<span class="cmt"># 3. Register the app's service principal in Exchange.</span>
+<span class="cmt">#    AppId is the Application (client) ID from step 1.</span>
+<span class="cmt">#    ObjectId is the Object ID of the ENTERPRISE APPLICATION</span>
+<span class="cmt">#    (Entra ID -> Enterprise applications -> EDM Zone Quoting),</span>
+<span class="cmt">#    which is NOT the same as the app registration's object ID.</span>
+New-ServicePrincipal -AppId &lt;application-client-id&gt; `
+  -ObjectId &lt;enterprise-app-object-id&gt; `
+  -DisplayName "EDM Zone Quoting"
+
+<span class="cmt"># 4. Grant the two roles, scoped to that mailbox only</span>
+New-ManagementRoleAssignment -App &lt;application-client-id&gt; `
+  -Role "Application Mail.Read" `
+  -CustomResourceScope "Quoting app - sales mailbox only"
+
+New-ManagementRoleAssignment -App &lt;application-client-id&gt; `
+  -Role "Application Mail.ReadWrite" `
+  -CustomResourceScope "Quoting app - sales mailbox only"</code></pre>
+      <div class="note danger">
+        <div class="head">Please do not skip this</div>
+        <p>
+          Without step 4, a single leaked secret exposes every mailbox in the
+          business — HR, finance, the directors — not just the sales inbox. With it,
+          the blast radius is one mailbox that already receives mail from outside
+          the company.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Send three values back to Roger</h3>
+      <ul class="plain">
+        <li><strong>Directory (tenant) ID</strong> — not secret</li>
+        <li><strong>Application (client) ID</strong> — not secret</li>
+        <li><strong>Client secret Value</strong> — <em>this one is a password</em></li>
+      </ul>
+      <div class="note danger">
+        <div class="head">How to hand over the secret</div>
+        <p>
+          The client secret is equivalent to a password for the sales mailbox. Do not
+          email it, do not put it in a chat message, and do not paste it into an AI
+          assistant — anything typed into a chat window is stored in that
+          conversation.
+        </p>
+        <p>
+          Put it straight into the application's configuration file yourself, or hand
+          it over through a password manager, or read it down the phone. The tenant
+          ID and client ID are fine to send by ordinary email; they identify the app
+          but grant nothing on their own.
+        </p>
+      </div>
+    </li>
+  </ol>
+
+  <!-- ================= AFTER ================= -->
+  <div class="after">
+    <h2>What happens after that</h2>
+    <ol>
+      <li>
+        The three values go into the app's settings file
+        (<code>backend/.env</code>) — never into the code, and never into a
+        conversation.
+      </li>
+      <li>
+        Running <code>python -m scripts.check_graph</code> walks the whole connection
+        one step at a time and stops at the first thing wrong with a specific fix. It
+        checks the settings, the sign-in, the mailbox, the RFQ category and the
+        tagged mail, and it decodes Azure's error codes — so "wrong secret", "wrong
+        tenant" and "expired secret" are told apart rather than all appearing as one
+        failure.
+      </li>
+      <li>
+        Adding <code>--poll</code> pulls anything already categorised
+        <strong>RFQ</strong> straight into the app, with its drawings.
+      </li>
+      <li>
+        Then the real test: does it read your drawings correctly? That is measured
+        against 20–30 jobs you have already quoted, before anyone relies on it.
+      </li>
+      <li>
+        Last comes hosting, so it checks the mailbox on its own overnight rather than
+        when somebody presses a button. No point hosting something whose accuracy has
+        not been judged yet.
+      </li>
+    </ol>
+  </div>
+
+  <div class="note" style="margin-top:28px">
+    <div class="head">If something does not work</div>
+    <p>
+      Do not spend long on it. Send me whatever
+      <code>scripts/check_graph.py</code> prints — it is written to say precisely
+      which of the six ways this can go wrong has happened, and five of those
+      otherwise look identical from the outside: no enquiries appear.
+    </p>
+  </div>
+
+</div>
