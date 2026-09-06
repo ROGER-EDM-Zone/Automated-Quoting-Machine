@@ -126,6 +126,13 @@ try {
     & $venvPython -m alembic upgrade head 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Stop-With "Could not set up the database." "Send the message above to Claude." }
     Good "Database ready"
+
+    # Only the market sources. Deliberately not the development seed: its
+    # rates and prices are invented placeholders, and putting invented rates
+    # into the machine that quotes customers is the one thing this whole
+    # system is built to prevent. Real rates get typed in on the Rates screen.
+    & $venvPython -m scripts.seed --sources-only 2>&1 | Out-Null
+    Good "Market data sources listed (switched off until given a web address)"
 } finally { Pop-Location }
 
 # --- 6. Desktop shortcut --------------------------------------------------
@@ -150,9 +157,15 @@ Say "What happens next:"
 Write-Host ""
 Say "1. Put the connection details into backend\.env"
 Say "   (the two ID numbers from the Microsoft sign-up page)"
-Say "2. Double-click 'EDM Zone Quoting' on the Desktop"
-Say "3. The first time, it will ask you to sign in with a code"
+Say "2. Double-click Sign-in.bat, and sign in with the code it shows"
+Say "3. Double-click 'EDM Zone Quoting' on the Desktop"
 Write-Host ""
 Say "The app opens at http://localhost:8000 in your browser."
+Write-Host ""
+Warn "There are no rates in it yet, and that is on purpose."
+Say "   Enquiries will arrive and drawings will be read, but nothing"
+Say "   will price until you enter your hourly rates on the Rates"
+Say "   screen. The app has no default rate anywhere - it refuses to"
+Say "   quote rather than guess a number nobody chose."
 Write-Host ""
 Read-Host "Press Enter to close"

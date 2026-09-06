@@ -558,12 +558,48 @@ def seed_worklists(db) -> None:
     print(f"  added {added} enquiries across the working lists")
 
 
+def seed_sources_only(db) -> int:
+    """The market sources, and nothing else.
+
+    Safe to run on a real installation, which the rest of this script is not:
+    a source row carries a name and a kind, no price and no URL, and every one
+    is created switched off. It invents nothing. It exists so the Market data
+    screen opens with the eight things worth watching already listed, waiting
+    for the business to point each at a page.
+    """
+    from scripts.refresh_market import SEED_SOURCES
+
+    existing = {row.series_key for row in db.query(MarketSource).all()}
+    added = [spec for spec in SEED_SOURCES if spec["series_key"] not in existing]
+    db.add_all(MarketSource(**spec, active=False) for spec in added)
+    db.commit()
+
+    print(f"  {len(added)} market source(s) added, all switched off")
+    if added:
+        print("  Give each one the address of a page showing its number, then switch it on.")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--example", action="store_true", help="also add a worked example enquiry")
+    parser.add_argument(
+        "--sources-only",
+        action="store_true",
+        help="only the market sources — invents nothing, safe on a real installation",
+    )
     args = parser.parse_args()
 
     settings = get_settings()
+
+    if args.sources_only:
+        init_db()
+        db = SessionLocal()
+        try:
+            return seed_sources_only(db)
+        finally:
+            db.close()
+
     if settings.environment not in ("development", "test"):
         print(
             f"Refusing to seed: AQM_ENVIRONMENT is '{settings.environment}'.\n"
