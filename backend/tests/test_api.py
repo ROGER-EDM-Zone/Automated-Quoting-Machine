@@ -742,3 +742,78 @@ def test_refreshing_with_no_sources_configured_is_not_an_error(api):
     client, *_ = api
     body = client.post("/admin/market/refresh").json()
     assert body == {"results": [], "succeeded": 0, "failed": 0}
+
+
+# --------------------------------------------------------------------------
+# Serving the screens, and the timer
+# --------------------------------------------------------------------------
+def test_health_reports_whether_the_mailbox_is_being_watched(api):
+    client, *_ = api
+    body = client.get("/health").json()
+    assert "mailbox_poll" in body
+    # No Graph settings in tests, so nothing should be polling.
+    assert body["mailbox_poll"] is False
+
+
+def test_the_poll_stays_off_when_graph_is_not_configured():
+    """A poll that cannot work must not run — the log would fill with
+    failures nobody can act on, and people learn to ignore the log."""
+    from app import poller
+    from app.config import Settings
+
+    assert poller.should_run(Settings(mailbox_poll_enabled=True)) is False
+    assert (
+        poller.should_run(
+            Settings(
+                mailbox_poll_enabled=True,
+                graph_tenant_id="t",
+                graph_client_id="c",
+                graph_quoting_mailbox="sales@example.test",
+            )
+        )
+        is True
+    )
+
+
+def test_the_poll_can_be_switched_off_even_when_configured():
+    from app import poller
+    from app.config import Settings
+
+    assert (
+        poller.should_run(
+            Settings(
+                mailbox_poll_enabled=False,
+                graph_tenant_id="t",
+                graph_client_id="c",
+                graph_quoting_mailbox="sales@example.test",
+            )
+        )
+        is False
+    )
+
+
+def test_the_screens_never_hand_out_files_outside_the_build(tmp_path, monkeypatch):
+    """The catch-all that serves the front end must not become a file
+    download for anything on the disk — .env above all."""
+    from fastapi.testclient import TestClient
+
+    from app.main import FRONTEND_DIST, app
+
+    if not FRONTEND_DIST.exists():
+        pytest.skip("no built front end in this checkout")
+
+    secret = FRONTEND_DIST.parent / ".env"
+    secret.write_text("AQM_GRAPH_CLIENT_SECRET=should-never-be-served")
+    try:
+        client = TestClient(app)
+        for attempt in (
+            "/%2e%2e%2f.env",
+            "/..%2f.env",
+            "/%2e%2e%2fapp%2fconfig.py",
+            "/../.env",
+        ):
+            response = client.get(attempt)
+            assert "should-never-be-served" not in response.text, attempt
+            assert "AQM_GRAPH_CLIENT_SECRET" not in response.text, attempt
+    finally:
+        secret.unlink(missing_ok=True)

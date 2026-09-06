@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:styles": "node scripts/check-styles.mjs",
-    "build:demo": "vite build --config vite.demo.config.ts && node scripts/bundle-preview.mjs"
+    "build:demo": "vite build --config vite.demo.config.ts && node scripts/bundle-preview.mjs",
+    "build:app": "npm run build && node scripts/copy-to-backend.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

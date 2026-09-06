@@ -8,13 +8,18 @@ drawings before any UI is built around it.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+from app import poller
 from app.api import admin, customers, enquiries, parts, quotes, reports, search, webhook
 from app.config import get_settings
 from app.db import init_db
@@ -43,7 +48,25 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "No Anthropic API key set — extraction and classification will "
             "fail. The deterministic pricing engine works regardless."
         )
-    yield
+
+    poll_task: asyncio.Task | None = None
+    if poller.should_run(settings):
+        poll_task = asyncio.create_task(poller.run(settings))
+    elif settings.mailbox_poll_enabled:
+        logger.info(
+            "Mailbox poll is on but Graph is not configured, so nothing will "
+            "be checked. Set the Graph settings in .env to switch it on."
+        )
+
+    try:
+        yield
+    finally:
+        if poll_task is not None:
+            poll_task.cancel()
+            # Wait for it to actually stop, so a poll mid-flight finishes its
+            # transaction rather than being torn down half-committed.
+            with suppress(asyncio.CancelledError):
+                await poll_task
 
 
 app = FastAPI(
@@ -85,4 +108,53 @@ def health() -> dict:
         "auth_required": settings.auth_required,
         "ai_configured": bool(settings.anthropic_api_key),
         "graph_configured": bool(settings.graph_client_id and settings.graph_quoting_mailbox),
+        "mailbox_poll": poller.should_run(settings),
     }
+
+
+# --------------------------------------------------------------------------
+# The screens
+# --------------------------------------------------------------------------
+# Serving the built front end from the same process is what turns this from
+# two things to run into one. On a shop-floor PC that matters more than the
+# tidiness of separating them: one shortcut, one address, one thing that can
+# be off. In development the Vite server does this instead and this directory
+# does not exist, which is why it is optional rather than required.
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "web"
+
+
+def _mount_frontend() -> None:
+    index = FRONTEND_DIST / "index.html"
+    if not index.exists():
+        logger.info(
+            "No built front end at %s — API only. Run `npm run build` in "
+            "frontend/ and copy dist/ here to serve the screens too.",
+            FRONTEND_DIST,
+        )
+        return
+
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIST / "assets"),
+        name="assets",
+    )
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def serve_screens(path: str) -> FileResponse:
+        """Hand any unmatched address to the front end.
+
+        It routes in the browser, so /queue and /enquiry/12 are its addresses,
+        not the server's. Registered last so every real endpoint above wins
+        first — otherwise this would swallow the entire API.
+        """
+        candidate = (FRONTEND_DIST / path).resolve()
+        # Only ever serve files from inside the build directory: a path like
+        # ../../.env must not become a download.
+        if path and candidate.is_file() and FRONTEND_DIST.resolve() in candidate.parents:
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+    logger.info("Serving the screens from %s", FRONTEND_DIST)
+
+
+_mount_frontend()

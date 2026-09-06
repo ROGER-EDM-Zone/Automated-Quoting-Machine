@@ -90,6 +90,14 @@ class Settings(BaseSettings):
     #: written 0600 and never committed.
     graph_token_cache: str = "./graph_token.json"
 
+    #: Check the mailbox on a timer, so enquiries arrive without anyone
+    #: pressing anything. Switched off automatically when Graph is not
+    #: configured — a poll that cannot work should not fill the log.
+    mailbox_poll_enabled: bool = True
+    #: Seconds between checks. Five minutes is well inside how fast anyone
+    #: needs to see an RFQ, and gentle on Graph's throttling.
+    mailbox_poll_seconds: int = 300
+
     # --- Auth (Entra ID SSO) ---
     auth_required: bool = False
     entra_tenant_id: str | None = None
