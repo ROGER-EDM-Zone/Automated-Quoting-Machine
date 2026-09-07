@@ -18,3 +18,8 @@ storage/
 htmlcov/
 dist-demo/
 graph_token.json
+
+# Real customer emails used for testing. Their drawings, addresses and
+# prices — never committed. This repository is public.
+backend/tests/real_messages/*
+!backend/tests/real_messages/README.md
