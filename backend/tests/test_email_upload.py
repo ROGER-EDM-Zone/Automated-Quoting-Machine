@@ -227,3 +227,124 @@ def test_a_dragged_enquiry_is_identical_to_a_polled_one(api):
     assert a.status == b.status
     assert [x.kind for x in a.attachments] == [x.kind for x in b.attachments]
     assert [x.content_hash for x in a.attachments] == [x.content_hash for x in b.attachments]
+
+
+# --------------------------------------------------------------------------
+# The three ways in
+# --------------------------------------------------------------------------
+def upload_to(client, lane, name="rfq.eml", data=None):
+    return client.post(
+        "/api/intake/upload",
+        files=[("files", (name, data or rfq_eml(), "application/octet-stream"))],
+        data={"lane": lane},
+    )
+
+
+def test_the_zone_it_was_dropped_on_is_recorded(api):
+    client, db, *_ = api
+
+    body = upload_to(client, "wire_edm").json()
+
+    assert body["ingested"][0]["lane"] == "wire_edm"
+    assert db.get(Enquiry, body["ingested"][0]["enquiry_id"]).intake_lane == "wire_edm"
+
+
+def test_dropping_without_choosing_a_zone_still_works(api):
+    client, db, *_ = api
+
+    body = upload(client, "rfq.eml", rfq_eml()).json()
+
+    assert body["new_count"] == 1
+    assert db.get(Enquiry, body["ingested"][0]["enquiry_id"]).intake_lane is None
+
+
+def test_an_unknown_zone_is_rejected_rather_than_recorded(api):
+    client, *_ = api
+
+    response = upload_to(client, "wire_edn")  # a typo, not a lane
+
+    assert response.status_code == 422
+    assert "wire_edm" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "lane,job_type,processes,constrained",
+    [
+        ("wire_edm", "service_only", ["wire_edm"], True),
+        ("spark_erode", "service_only", ["spark_erode"], True),
+        # Full supply says who buys the material, not what the machines do,
+        # so the routing is still the classifier's to work out.
+        ("full_supply", "full_supply", None, False),
+    ],
+)
+def test_the_zone_decides_the_job_type_and_routing(db, lane, job_type, processes, constrained):
+    from app.models import Enquiry, Part, utcnow
+    from app.services.extraction import _apply_intake_lane
+
+    enquiry = Enquiry(
+        outlook_message_id=f"lane-{lane}",
+        subject="RFQ",
+        received_at=utcnow(),
+        intake_lane=lane,
+    )
+    db.add(enquiry)
+    db.flush()
+    part = Part(enquiry_id=enquiry.id)
+    db.add(part)
+    db.flush()
+
+    _apply_intake_lane(db, part)
+
+    assert part.job_type == job_type
+    assert part.process_mix == processes
+    assert part.process_mix_constrained is constrained
+
+
+def test_a_part_with_no_zone_is_left_for_the_classifier(db):
+    from app.models import Enquiry, Part, utcnow
+    from app.services.extraction import _apply_intake_lane
+
+    enquiry = Enquiry(outlook_message_id="no-lane", received_at=utcnow())
+    db.add(enquiry)
+    db.flush()
+    part = Part(enquiry_id=enquiry.id, job_type="ambiguous")
+    db.add(part)
+    db.flush()
+
+    _apply_intake_lane(db, part)
+
+    assert part.job_type == "ambiguous"
+    assert part.process_mix is None
+
+
+def test_re_dropping_an_email_does_not_relabel_a_corrected_job(api):
+    """An estimator who fixed the job type in the workspace must not be
+    silently overruled by somebody dragging the same email in again."""
+    client, db, *_ = api
+
+    first = upload_to(client, "wire_edm").json()["ingested"][0]
+    enquiry_id = first["enquiry_id"]
+
+    db.get(Enquiry, enquiry_id).intake_lane = "full_supply"
+    db.commit()
+    upload_to(client, "spark_erode")
+
+    assert db.get(Enquiry, enquiry_id).intake_lane == "full_supply"
+
+
+def test_an_unrecognised_zone_on_an_old_enquiry_is_ignored_not_obeyed(db):
+    """A lane name that no longer exists must leave the part alone rather
+    than crash extraction or apply something arbitrary."""
+    from app.models import Enquiry, Part, utcnow
+    from app.services.extraction import _apply_intake_lane
+
+    enquiry = Enquiry(outlook_message_id="old-lane", received_at=utcnow(), intake_lane="laser_cut")
+    db.add(enquiry)
+    db.flush()
+    part = Part(enquiry_id=enquiry.id, job_type="ambiguous")
+    db.add(part)
+    db.flush()
+
+    _apply_intake_lane(db, part)
+
+    assert part.job_type == "ambiguous"

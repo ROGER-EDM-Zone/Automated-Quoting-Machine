@@ -104,6 +104,18 @@ for (const lane of ["needs_attention", "ready_to_send"]) {
   }
 }
 
+// The three intake zones. Class names are built from the lane key, so a
+// renamed lane silently loses its styling rather than breaking the build.
+const INTAKE_LANES = ["wire_edm", "spark_erode", "full_supply"];
+for (const lane of INTAKE_LANES) {
+  if (!css.includes(`.zone-${lane}`)) {
+    failures.push(
+      `No CSS rule for .zone-${lane}. Each way work comes in needs to be ` +
+        `tellable from the others at a glance.`,
+    );
+  }
+}
+
 if (failures.length) {
   console.error("Style guard failed:\n" + failures.map((f) => `  - ${f}`).join("\n"));
   process.exit(1);
@@ -111,5 +123,6 @@ if (failures.length) {
 console.log(
   `Style guard passed: ${TIME_SOURCES.length} time sources, ` +
     `${PRICE_STATES.length} price states, ${MARKET_STATUSES.length} market ` +
-    `statuses, ${LANES.length} lanes and .unread all styled.`,
+    `statuses, ${LANES.length} lists, ${INTAKE_LANES.length} intake zones ` +
+    `and .unread all styled.`,
 );

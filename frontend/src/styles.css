@@ -338,44 +338,90 @@ tr.market-stale, tr.market-last_refresh_failed { background: #fffaf0; }
 .lane-to_check .lane-count { background: #eceff2; color: var(--muted); }
 
 /* --------------------------------------------------------------------------
-   Dragging emails in
+   The three ways work comes in
    --------------------------------------------------------------------------
-   The way into the system before a mailbox connection exists. It sits at the
-   top of the queue rather than behind a menu because for now it is how work
-   arrives, and a way in that has to be looked for is a way in nobody uses.
+   These sit at the top of the queue, before the lists, because dropping an
+   email is the action this screen exists for. Each zone is one target: the
+   whole card, not a small dashed rectangle inside it, because a small target
+   inside a big card is a drop that misses.
+
+   The three are told apart by an edge colour rather than by anything louder.
+   They are siblings doing the same job, not three levels of urgency, so the
+   colour is identification and nothing more.
    -------------------------------------------------------------------------- */
-.dropzone {
-  border: 2px dashed var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  margin-bottom: 20px;
-  transition: border-color .12s ease, background .12s ease;
+.intake {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
 }
-.dropzone label {
+@media (max-width: 900px) {
+  .intake { grid-template-columns: 1fr; }
+}
+
+.zone {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--muted);
+  border-radius: 8px;
+  transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+}
+.zone label {
   display: block;
-  padding: 18px 22px;
+  padding: 16px 18px 15px;
   cursor: pointer;
   margin: 0;
-  text-transform: none;
   font-weight: 400;
-  color: inherit;
   font-size: inherit;
+  color: inherit;
+  text-transform: none;
+  min-height: 132px;
 }
-.dropzone strong { display: block; font-size: 15px; margin-bottom: 3px; }
-/* Direct child only — the "choose files" span inside this one must stay
-   inline, or it breaks onto its own line and orphans the full stop. */
-.dropzone label > span { display: block; font-size: 13px; color: var(--muted); }
-.dropzone:hover { border-color: var(--muted); }
+.zone:hover:not(.disabled) { border-color: var(--muted); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.zone:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Mid-drag it has to be unmistakable that letting go will do something. */
-.dropzone.dragging {
+.zone-detail {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.zone-title { display: block; font-size: 16px; font-weight: 650; margin-bottom: 6px; }
+.zone-hint {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.zone-cta {
+  display: block;
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* One edge colour each, so they are distinguishable at a glance without
+   any of them shouting. */
+.zone-wire_edm { border-top-color: var(--accent); }
+.zone-spark_erode { border-top-color: var(--estimated-border); }
+.zone-full_supply { border-top-color: var(--ok); }
+
+/* Mid-drag it must be unmistakable which one will take the file. */
+.zone.dragging {
   border-color: var(--accent);
-  border-style: solid;
   background: var(--info-bg);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
-.dropzone.dragging strong { color: var(--accent); }
+.zone.dragging .zone-cta { color: var(--accent); font-weight: 700; }
 
-.dropzone.busy { border-color: var(--accent); opacity: .7; cursor: progress; }
-.dropzone.busy label { cursor: progress; }
+.zone.busy { opacity: .75; }
+.zone.busy label { cursor: progress; }
+/* While one zone is reading, the others must not look droppable. */
+.zone.disabled { opacity: .4; }
+.zone.disabled label { cursor: not-allowed; }
 
 .link-look { color: var(--accent); text-decoration: underline; }

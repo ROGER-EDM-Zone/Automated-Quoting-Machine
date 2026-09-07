@@ -19,7 +19,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.enums import AttachmentKind, EnquiryStatus, FlagCategory, FlagSeverity
+from app.enums import (
+    INTAKE_LANE_INTENT,
+    AttachmentKind,
+    EnquiryStatus,
+    FlagCategory,
+    FlagSeverity,
+    IntakeLane,
+)
 from app.models import Attachment, Enquiry, Part
 from app.prompts import extraction as extraction_prompt
 from app.services import flags as flag_service
@@ -119,6 +126,7 @@ def extract_attachment(
         db.add(part)
 
     _apply_to_part(part, outcome, payload)
+    _apply_intake_lane(db, part)
     db.flush()
 
     # Carry the drawing identity onto the attachment so duplicate and
@@ -133,6 +141,37 @@ def extract_attachment(
 
     _raise_model_reported_flags(db, part, payload)
     return ExtractionResult(part=part, outcome=outcome, payload=payload)
+
+
+def _apply_intake_lane(db: Session, part: Part) -> None:
+    """Honour the drop zone the estimator chose, if they chose one.
+
+    They knew what the job was before the drawing was read, and a fact from
+    a person outranks an inference from a picture. Applied here rather than
+    at intake because parts do not exist until a drawing has been read — the
+    declaration is made on the enquiry and lands on every part that comes out
+    of it.
+
+    Deliberately not sticky: an estimator who corrects the job type in the
+    workspace is not overruled the next time extraction runs, because this
+    only fills what extraction itself just set.
+    """
+    enquiry = db.get(Enquiry, part.enquiry_id)
+    if enquiry is None or not enquiry.intake_lane:
+        return
+
+    try:
+        intent = INTAKE_LANE_INTENT[IntakeLane(enquiry.intake_lane)]
+    except (KeyError, ValueError):
+        logger.warning("Unknown intake lane %r on enquiry %s", enquiry.intake_lane, enquiry.id)
+        return
+
+    part.job_type = intent["job_type"].value
+    if intent["processes"]:
+        part.process_mix = [process.value for process in intent["processes"]]
+        # The estimator named the routing, so the classifier may not add to
+        # it — the same rule that applies when a customer names it.
+        part.process_mix_constrained = intent["constrained"]
 
 
 def _apply_to_part(part: Part, outcome: ConfidenceOutcome, payload: dict) -> None:

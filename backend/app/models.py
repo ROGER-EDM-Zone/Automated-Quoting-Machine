@@ -109,6 +109,11 @@ class Enquiry(Base, TimestampMixin):
     #: who forwarded it; sender_email then holds the actual customer, so
     #: customer matching and the reply both go to the right party.
     forwarded_by: Mapped[str | None] = mapped_column(String(320))
+    #: Which drop zone an estimator used, when they used one. A statement of
+    #: fact from a person, so it overrides what the classifier would infer —
+    #: and it is recorded rather than applied and forgotten, because "who
+    #: decided this was wire only" is a question that gets asked later.
+    intake_lane: Mapped[str | None] = mapped_column(String(20))
     #: What the forwarder wrote above the chain — "RFQ to process Wire EDM".
     #: Routing instruction from a colleague, not a customer request, and the
     #: classifier is told which is which.

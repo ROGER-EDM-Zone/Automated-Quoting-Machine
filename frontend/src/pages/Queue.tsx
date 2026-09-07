@@ -8,6 +8,42 @@ import { Card, ErrorBanner, StatusBadge } from "../components/Primitives";
 type Sort = "age" | "value" | "flags" | "confidence";
 
 /**
+ * The three ways work comes in, in the order the shop thinks about them.
+ *
+ * Choosing a zone states two things the classifier would otherwise have to
+ * infer: what the job is, and who is buying the material. An estimator knows
+ * both before the drawing is opened, so asking the AI to work them out is a
+ * guess where a fact was available.
+ */
+type LaneKey = "wire_edm" | "spark_erode" | "full_supply";
+
+const LANES: {
+  lane: LaneKey;
+  title: string;
+  detail: string;
+  hint: string;
+}[] = [
+  {
+    lane: "wire_edm",
+    title: "Wire EDM only",
+    detail: "Free issue · wire",
+    hint: "Material comes from the customer. Routed to wire, nothing added.",
+  },
+  {
+    lane: "spark_erode",
+    title: "Spark erosion only",
+    detail: "Free issue · spark",
+    hint: "Material comes from the customer. Routed to spark, nothing added.",
+  },
+  {
+    lane: "full_supply",
+    title: "Full supply",
+    detail: "We buy the material",
+    hint: "Operations worked out from the drawing, material costed and nested.",
+  },
+];
+
+/**
  * What an empty lane means. "Nothing waiting" is ambiguous — an empty Needs
  * attention is good news and an empty Ready to send is not the same news at
  * all, so each lane says its own thing.
@@ -74,8 +110,8 @@ export default function Queue() {
   const [checking, setChecking] = useState(false);
   const [pollNotice, setPollNotice] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState<LaneKey | null>(null);
+  const [uploading, setUploading] = useState<LaneKey | null>(null);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
 
   useEffect(() => {
@@ -138,21 +174,24 @@ export default function Queue() {
    * is what lets the shop use and judge the system before anybody has
    * arranged a mailbox connection.
    */
-  const acceptFiles = async (files: FileList | null) => {
+  const acceptFiles = async (files: FileList | null, lane: LaneKey) => {
     if (!files || files.length === 0) return;
     setError(null);
     setUploadResult(null);
-    setUploading(true);
+    setUploading(lane);
     try {
       const body = new FormData();
       for (const file of Array.from(files)) body.append("files", file);
+      // The zone it was dropped on is a statement of fact from a person, so
+      // it travels with the email and outranks what the AI would infer.
+      body.append("lane", lane);
       setUploadResult(await api.upload<UploadResult>("/intake/upload", body));
       setReloadKey((k) => k + 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setUploading(false);
-      setDragging(false);
+      setUploading(null);
+      setDragging(null);
     }
   };
 
@@ -160,35 +199,18 @@ export default function Queue() {
     <>
       <ErrorBanner error={error} />
 
-      <div
-        className={`dropzone${dragging ? " dragging" : ""}${uploading ? " busy" : ""}`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          void acceptFiles(e.dataTransfer.files);
-        }}
-      >
-        <label>
-          <strong>
-            {uploading ? "Reading…" : "Drag RFQ emails here from Outlook"}
-          </strong>
-          <span>
-            Drop <code>.msg</code> or <code>.eml</code> files, or{" "}
-            <span className="link-look">choose files</span>. Drawings come with
-            them. Several at once is fine.
-          </span>
-          <input
-            type="file"
-            multiple
-            accept=".msg,.eml,message/rfc822,application/vnd.ms-outlook"
-            onChange={(e) => void acceptFiles(e.target.files)}
-            hidden
+      <div className="intake">
+        {LANES.map((entry) => (
+          <DropZone
+            key={entry.lane}
+            lane={entry}
+            busy={uploading === entry.lane}
+            disabled={uploading !== null && uploading !== entry.lane}
+            dragging={dragging === entry.lane}
+            onDragState={(on) => setDragging(on ? entry.lane : null)}
+            onFiles={(files) => void acceptFiles(files, entry.lane)}
           />
-        </label>
+        ))}
       </div>
 
       {uploadResult && (
@@ -317,5 +339,69 @@ export default function Queue() {
         )}
       </Card>
     </>
+  );
+}
+
+
+/**
+ * One place to drop emails.
+ *
+ * Three of these sit across the top of the queue because for now this is how
+ * work arrives, and a way in that has to be looked for is a way in nobody
+ * uses. The whole card is the target — a small dashed rectangle inside a big
+ * card is a drop that misses.
+ */
+function DropZone({
+  lane,
+  busy,
+  disabled,
+  dragging,
+  onDragState,
+  onFiles,
+}: {
+  lane: { lane: LaneKey; title: string; detail: string; hint: string };
+  busy: boolean;
+  disabled: boolean;
+  dragging: boolean;
+  onDragState: (on: boolean) => void;
+  onFiles: (files: FileList | null) => void;
+}) {
+  return (
+    <div
+      className={
+        `zone zone-${lane.lane}` +
+        (dragging ? " dragging" : "") +
+        (busy ? " busy" : "") +
+        (disabled ? " disabled" : "")
+      }
+      onDragOver={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        onDragState(true);
+      }}
+      onDragLeave={() => onDragState(false)}
+      onDrop={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        onFiles(e.dataTransfer.files);
+      }}
+    >
+      <label>
+        <span className="zone-detail">{lane.detail}</span>
+        <strong className="zone-title">{lane.title}</strong>
+        <span className="zone-hint">{busy ? "Reading the email…" : lane.hint}</span>
+        <span className="zone-cta">
+          {dragging ? "Let go" : "Drop an email, or click to choose"}
+        </span>
+        <input
+          type="file"
+          multiple
+          accept=".msg,.eml,message/rfc822,application/vnd.ms-outlook"
+          disabled={disabled || busy}
+          onChange={(e) => onFiles(e.target.files)}
+          hidden
+        />
+      </label>
+    </div>
   );
 }

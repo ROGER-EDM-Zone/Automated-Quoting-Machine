@@ -14,6 +14,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     Request,
@@ -25,6 +26,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings, get_settings
 from app.db import SessionLocal, get_db
 from app.deps import CurrentUser, get_current_user
+from app.enums import IntakeLane
 from app.services.email_file import EmailFileError, parse_email_file
 from app.services.graph import GraphError, GraphNotConfigured, get_graph_client
 from app.services.intake import ingest_message, poll_mailbox
@@ -208,6 +210,7 @@ def renew_subscription(subscription_id: str, _user: CurrentUser = Depends(get_cu
 @router.post("/intake/upload")
 async def upload_emails(
     files: list[UploadFile] = File(...),
+    lane: str | None = Form(default=None),
     db: Session = Depends(get_db),
     _user: CurrentUser = Depends(get_current_user),
 ):
@@ -223,6 +226,16 @@ async def upload_emails(
     a mailbox connection. Each file is handled on its own, so one unreadable
     message does not lose the rest of the batch.
     """
+    if lane is not None:
+        try:
+            IntakeLane(lane)
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown lane '{lane}'. Expected one of: "
+                + ", ".join(item.value for item in IntakeLane),
+            ) from None
+
     ingested: list[dict] = []
     failed: list[dict] = []
 
@@ -241,6 +254,10 @@ async def upload_emails(
 
         try:
             result = ingest_message(db, message)
+            # Only on a new enquiry: re-dropping an email must not silently
+            # relabel a job somebody has already corrected in the workspace.
+            if lane and result.created:
+                result.enquiry.intake_lane = lane
             db.commit()
         except Exception as exc:  # noqa: BLE001 - same reasoning
             db.rollback()
@@ -257,6 +274,7 @@ async def upload_emails(
                 "attachments": result.attachments_stored,
                 "drawings": result.drawings_found,
                 "customer_matched": result.enquiry.customer is not None,
+                "lane": result.enquiry.intake_lane,
             }
         )
 

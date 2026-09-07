@@ -219,3 +219,50 @@ class MarketBasis(StrEnum):
     SUPPLIER_QUOTE = "supplier_quote"
     SURVEY = "survey"
     INDEX = "index"
+
+
+class IntakeLane(StrEnum):
+    """Which door an enquiry came in by, when a person chose the door.
+
+    Dropping an RFQ onto "Wire EDM only" is the estimator stating two facts
+    they already know: what the job is, and who is buying the material. Both
+    are things the classifier would otherwise have to infer from the drawing
+    and the wording of an email, and inferring what somebody already knows is
+    the worst trade in the system — it costs an AI call and can be wrong.
+
+    So a lane is treated as a human decision, and it beats the classifier.
+    It stays editable in the workspace: dropping a job in the wrong pile is
+    a slip, not a commitment.
+    """
+
+    WIRE_EDM = "wire_edm"
+    SPARK_ERODE = "spark_erode"
+    FULL_SUPPLY = "full_supply"
+
+
+#: What each lane declares. The processes are the shop's own routing, which
+#: is why they are constrained: the estimator naming wire means wire, and the
+#: classifier must not add milling to it on the strength of a drawing.
+INTAKE_LANE_INTENT: dict[IntakeLane, dict] = {
+    IntakeLane.WIRE_EDM: {
+        "label": "Wire EDM only",
+        "job_type": JobType.SERVICE_ONLY,
+        "processes": (Process.WIRE_EDM,),
+        "constrained": True,
+    },
+    IntakeLane.SPARK_ERODE: {
+        "label": "Spark erosion only",
+        "job_type": JobType.SERVICE_ONLY,
+        "processes": (Process.SPARK_ERODE,),
+        "constrained": True,
+    },
+    IntakeLane.FULL_SUPPLY: {
+        "label": "Full supply",
+        # Nothing about the routing is declared here — full supply says who
+        # buys the material, not what the machines do. The classifier still
+        # works the operations out.
+        "job_type": JobType.FULL_SUPPLY,
+        "processes": (),
+        "constrained": False,
+    },
+}
