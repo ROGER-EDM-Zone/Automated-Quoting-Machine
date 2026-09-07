@@ -87,6 +87,7 @@ class MaterialRequirementOut(ORMModel):
     price_source_url: str | None = None
     price_observed_at: datetime | None = None
     price_is_stale: bool = False
+    price_method: str | None = None
 
 
 class PartOut(ORMModel):

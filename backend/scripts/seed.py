@@ -3,11 +3,18 @@
 Creates the reference data nothing works without (rates, rules, stock), one
 customer, and a worked example enquiry so the workspace has something in it.
 
-EVERY FIGURE HERE IS INVENTED (spec section 9). The rates, the margin, the
-stock prices and the cycle times are placeholders chosen to show the shape of
-the output. Real rates, real cycle times and real margin policy must come from
-the business before anything is quoted for a customer — seeding this into a
-production database would be a serious mistake, so the script refuses to.
+Some figures here are now REAL, and which are which matters:
+
+  * **Real, from the business.** The £65/hour charge-out rate on every
+    process, and the machining allowance of 4mm on the section and 10mm on
+    the length. These are EDM Zone's own and are safe to quote from.
+  * **Still invented.** Stock prices, cycle times, the example enquiries and
+    the market observation. Placeholders chosen to show the shape of the
+    output, and not safe to quote from.
+
+The script still refuses to run against a production database, because the
+invented half is enough to produce a wrong price. `--sources-only` is the
+part that is safe there.
 
     python -m scripts.seed              # reference data only
     python -m scripts.seed --example    # also build a worked example enquiry
@@ -42,7 +49,6 @@ from app.models import (
     Customer,
     Enquiry,
     Flag,
-    MarketObservation,
     MarketSource,
     Operation,
     Part,
@@ -53,15 +59,29 @@ from app.models import (
 )
 from app.services.storage import attachment_key, content_hash, get_storage
 
-# --- illustrative placeholders, not real rates -----------------------------
+#: EDM Zone's actual charge-out rate, as stated by the business: one rate,
+#: every process, £65 an hour.
+#:
+#: It is a CHARGE-OUT rate, not a cost rate — what the customer pays for an
+#: hour. Their own worked example settles it: an hour of wire plus an hour to
+#: set comes to £130, which is 2 x £65 with nothing added. So margin must not
+#: be applied to labour on top of this, or every job is quoted twice over.
+#: Customers are seeded at 0% margin for that reason; material is where a
+#: mark-up belongs.
+SHOP_HOURLY_RATE = "65.00"
+
 RATES: dict[str, str] = {
-    Process.CNC_MILL.value: "55.00",
-    Process.CNC_TURN.value: "52.00",
-    Process.WIRE_EDM.value: "42.00",
-    Process.SPARK_ERODE.value: "38.00",
-    Process.GRIND.value: "40.00",
-    Process.MANUAL.value: "35.00",
-    Process.QC.value: "30.00",
+    process.value: SHOP_HOURLY_RATE
+    for process in (
+        Process.CNC_MILL,
+        Process.CNC_TURN,
+        Process.WIRE_EDM,
+        Process.SPARK_ERODE,
+        Process.GRIND,
+        Process.LASER_ETCH,
+        Process.MANUAL,
+        Process.QC,
+    )
 }
 
 RULES = [
@@ -85,6 +105,8 @@ RULES = [
     ),
     # Millimetres, not money. Without these the calculator sizes stock to the
     # finished part and buys bar with nothing left to clean up.
+    # The shop's own rule of thumb, as stated: 4mm on the diameter, 10mm on
+    # the length. The length allowance is larger because both ends get faced.
     (
         RuleKey.MATERIAL_ALLOWANCE_SECTION.value,
         "Material left on the diameter, or on each section face, for clean-up",
@@ -95,7 +117,7 @@ RULES = [
         RuleKey.MATERIAL_ALLOWANCE_LENGTH.value,
         "Material left on the length of one part, before the parting kerf",
         AdjustmentType.MM.value,
-        "4",
+        "10",
     ),
 ]
 
@@ -109,10 +131,13 @@ DENSITY = {
 
 #: A supplier's round-bar range for EN16, and both forms for EN30B so the
 #: shape choice is visible: a square part should buy square bar.
+#: Series keys must match `scripts/seed_materials.py`, which owns prices —
+#: a stock row pointing at a series nobody prices costs nothing, and a
+#: material that costs nothing is the worst number this system can produce.
 LIVE_RANGES = [
-    ("EN16", StockForm.BAR_ROUND.value, "material:en16:round_bar", [60, 70, 80, 90, 100, 110, 120]),
-    ("EN30B", StockForm.BAR_ROUND.value, "material:en30b:round_bar", [60, 70, 80, 90]),
-    ("EN30B", StockForm.BAR_SQUARE.value, "material:en30b:square_bar", [40, 50, 55, 60, 70]),
+    ("EN16", StockForm.BAR_ROUND.value, "material:en16", [60, 70, 80, 90, 100, 110, 120]),
+    ("EN30B", StockForm.BAR_ROUND.value, "material:en30b", [60, 70, 80, 90]),
+    ("EN30B", StockForm.BAR_SQUARE.value, "material:en30b", [40, 50, 55, 60, 70]),
 ]
 
 STOCK = [
@@ -222,23 +247,9 @@ def seed_market(db) -> None:
             db.add(source)
             db.flush()
 
-        if db.query(MarketObservation).filter_by(series_key=series_key).count() == 0:
-            db.add(
-                MarketObservation(
-                    source_id=source.id,
-                    series_key=series_key,
-                    value=Decimal("2.40"),
-                    unit=MarketUnit.GBP_PER_KG.value,
-                    method=MarketMethod.MANUAL.value,
-                    basis=source.basis,
-                    confidence=0.95,
-                    evidence=(
-                        "PLACEHOLDER — seeded for development, not read from a "
-                        "supplier. Replace by running scripts/refresh_market.py."
-                    ),
-                    observed_at=utcnow(),
-                )
-            )
+        # No price is invented here. `scripts/seed_materials.py` owns
+        # material prices, and one material with two sources disagreeing is
+        # worse than one with none.
 
         existing = {
             Decimal(row.width_mm)
@@ -278,7 +289,8 @@ def seed_example(db) -> None:
         customer = Customer(
             name="Bracken Engineering",
             domain="bracken-eng.example",
-            default_margin_pct=Decimal("30"),
+            # Zero, deliberately: the £65/h rate already carries the margin.
+            default_margin_pct=Decimal("0"),
             default_lead_days=10,
             is_material_supplied_default=True,
             requires_cert=False,
@@ -406,7 +418,7 @@ def seed_full_supply_example(db) -> None:
         customer = Customer(
             name="Halden Power Systems",
             domain="halden-power.example",
-            default_margin_pct=Decimal("35"),
+            default_margin_pct=Decimal("0"),
             default_lead_days=15,
             is_material_supplied_default=False,
             requires_cert=True,
@@ -620,7 +632,10 @@ def main() -> int:
     finally:
         db.close()
 
-    print("\nDone. Remember: these rates are placeholders, not the business's rates.")
+    print(
+        "\nDone. The £65/h rates and the 4mm/10mm allowance are the business's "
+        "own.\nThe stock prices and cycle times are still placeholders."
+    )
     return 0
 
 

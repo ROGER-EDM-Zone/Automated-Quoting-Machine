@@ -55,6 +55,8 @@ export interface MaterialRequirement {
   price_source_url: string | null;
   price_observed_at: string | null;
   price_is_stale: boolean;
+  /** How it was arrived at — 'scraped', 'ai_read' or 'manual'. */
+  price_method: string | null;
 }
 
 /** One outside number the quote depends on, and how much to trust it. */

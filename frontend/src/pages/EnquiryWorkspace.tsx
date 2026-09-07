@@ -686,8 +686,18 @@ function MaterialPriceSource({ requirement }: { requirement: MaterialRequirement
   const observed = requirement.price_observed_at
     ? new Date(requirement.price_observed_at).toLocaleDateString("en-GB")
     : null;
+
+  // Age and origin are different questions. A figure estimated this morning
+  // is current and still not a price anybody quoted, so it must not wear the
+  // same colour as one read off a supplier's page an hour ago.
+  const state = requirement.price_is_stale
+    ? "price-stale"
+    : requirement.price_method === "manual"
+      ? "price-estimated"
+      : "price-live";
+
   return (
-    <div className={`price-source ${requirement.price_is_stale ? "price-stale" : "price-live"}`}>
+    <div className={`price-source ${state}`}>
       {requirement.price_source_name}
       {observed && <span className="subtle"> · {observed}</span>}
     </div>

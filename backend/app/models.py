@@ -325,6 +325,10 @@ class MaterialRequirement(Base, TimestampMixin):
     price_source_url: Mapped[str | None] = mapped_column(String(500))
     price_observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     price_is_stale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    #: How the price was arrived at. Age and origin are different questions:
+    #: a figure somebody estimated this morning is current and still not a
+    #: price anybody quoted. Without this, an estimate renders as live.
+    price_method: Mapped[str | None] = mapped_column(String(20))
 
     part: Mapped[Part] = relationship(back_populates="material_requirements")
 

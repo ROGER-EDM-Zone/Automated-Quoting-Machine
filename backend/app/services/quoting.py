@@ -22,6 +22,7 @@ from app.enums import (
     FlagCategory,
     FlagSeverity,
     JobType,
+    MarketMethod,
     Process,
     QuoteStatus,
     StockForm,
@@ -389,9 +390,34 @@ def _record_price_provenance(
     """
     priced = live.get(result.stock_id)
 
+    # Free steel does not exist. A zero unit cost means the stock row was
+    # never priced and no live price could be found for it — and a quote that
+    # gives the material away is worse than one that refuses to be made,
+    # because it looks entirely reasonable on the way out of the door.
+    if Decimal(result.unit_cost) <= 0:
+        requirement.price_source_name = None
+        requirement.price_method = None
+        requirement.price_observed_at = None
+        requirement.price_is_stale = True
+        flag_service.raise_flag(
+            db,
+            part_id=part.id,
+            category=FlagCategory.COMMERCIAL_JUDGEMENT.value,
+            severity=FlagSeverity.BLOCK.value,
+            message=(
+                f"{result.stock_label} is costing nothing, so this quote is "
+                "giving the material away. Either give the stock size a price, "
+                "or point it at a market source and give it a density."
+            ),
+            dedupe_key="material_costs_nothing",
+        )
+        db.flush()
+        return
+
     if priced is None:
         requirement.price_source_name = None
         requirement.price_source_url = None
+        requirement.price_method = None
         requirement.price_observed_at = None
         requirement.price_is_stale = True
         flag_service.raise_flag(
@@ -411,10 +437,26 @@ def _record_price_provenance(
         return
 
     _, reading = priced
+    requirement.price_method = reading.method
     requirement.price_source_name = reading.source_name
     requirement.price_source_url = reading.source_url
     requirement.price_observed_at = reading.observed_at
     requirement.price_is_stale = reading.is_stale
+
+    if reading.method == MarketMethod.MANUAL.value:
+        flag_service.raise_flag(
+            db,
+            part_id=part.id,
+            category=FlagCategory.COMMERCIAL_JUDGEMENT.value,
+            severity=FlagSeverity.WARN.value,
+            message=(
+                f"The {result.stock_label} price is an estimate somebody "
+                "entered, not a figure read from a supplier. Worth checking "
+                "against a real quote before this goes out."
+            ),
+            dedupe_key="material_price_estimated",
+        )
+        db.flush()
 
     if reading.is_stale:
         days = reading.age.days

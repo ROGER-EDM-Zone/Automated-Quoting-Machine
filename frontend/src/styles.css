@@ -214,6 +214,18 @@ label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px
   padding: 0 4px;
 }
 .price-stale::after { content: " — out of date"; }
+/* Somebody's estimate: current, but never read off a supplier's page. It
+   gets its own treatment because wearing the "live" green would be a lie,
+   and wearing the "stale" amber would be wrong about why. */
+.price-estimated {
+  color: var(--estimated);
+  background: var(--estimated-bg);
+  border: 1px dashed var(--estimated-border);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.price-estimated::after { content: " — estimate"; }
+
 .price-typed {
   color: var(--muted);
   background: #eceff2;

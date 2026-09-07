@@ -43,7 +43,7 @@ if (!/background/.test(estimateBlock) || !/border/.test(estimateBlock)) {
  * is built from data (`price-${state}`), so a rename removes the distinction
  * silently. A live price and one typed in last year must not look alike.
  */
-const PRICE_STATES = ["price-live", "price-stale", "price-typed"];
+const PRICE_STATES = ["price-live", "price-stale", "price-estimated", "price-typed"];
 for (const state of PRICE_STATES) {
   if (!css.includes(`.${state}`)) {
     failures.push(
@@ -53,7 +53,7 @@ for (const state of PRICE_STATES) {
   }
 }
 
-for (const state of ["price-stale", "price-typed"]) {
+for (const state of ["price-stale", "price-estimated", "price-typed"]) {
   const block = css.match(new RegExp(`\\.${state}\\s*\\{[^}]*\\}`))?.[0] ?? "";
   if (!/background/.test(block) || !/border/.test(block)) {
     failures.push(
