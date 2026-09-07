@@ -221,92 +221,119 @@
   </p>
 
   <div class="budget">
-    <div><span class="t">5 min</span><span class="l">A · Outlook</span></div>
-    <div><span class="t">10 min</span><span class="l">B · Microsoft sign-up</span></div>
-    <div><span class="t">15 min</span><span class="l">C · Install on the PC</span></div>
-    <div><span class="t">10 min</span><span class="l">D · Connect it</span></div>
-    <div><span class="t">10 min</span><span class="l">E · First real RFQ</span></div>
+    <div><span class="t">20 min</span><span class="l">A · Install it</span></div>
+    <div><span class="t">5 min</span><span class="l">B · Key for reading drawings</span></div>
+    <div><span class="t">5 min</span><span class="l">C · Start it</span></div>
+    <div><span class="t">—</span><span class="l">D · Drag emails in</span></div>
+  </div>
+
+  <div class="note ok">
+    <div class="head">This got much shorter</div>
+    <p>
+      There is no Microsoft sign-up any more, no administrator, no permissions
+      and no waiting on anybody. You drag RFQ emails out of Outlook and drop
+      them on the app. The drawings come with them.
+    </p>
+    <p>
+      Connecting the mailbox so it collects them by itself is still there for
+      later, in <em>Connecting the app to sales@</em>. It changes nothing about
+      how the app works — only who does the fetching.
+    </p>
   </div>
 
   <div class="note warn">
-    <div class="head">Before you start — one thing that costs money</div>
+    <div class="head">One thing costs money</div>
     <p>
-      Stage C asks for an <strong>Anthropic API key</strong>. That is what pays
-      for reading drawings, and it is billed on usage — roughly a few pence per
-      drawing. You put a card on the account and set a monthly cap.
+      Stage B asks for an <strong>Anthropic key</strong>. That is what pays for
+      reading drawings — roughly a few pence each. You put a card on the account
+      and set a monthly cap.
     </p>
     <p>
-      You can skip it and come back. Without it everything works except reading
-      drawings automatically: enquiries still arrive, and you can still type the
-      details in and let it price them.
+      You can skip it and come back. Without it the app still takes emails in,
+      still stores the drawings, and still prices anything you type in yourself.
+      It just will not read the drawings for you, which is most of the point.
     </p>
   </div>
 
   <!-- ============ A ============ -->
   <div class="stage">
     <span class="stage-n">STAGE A</span>
-    <h2>Set up the tag in Outlook</h2>
-    <span class="mins">5 minutes</span>
+    <h2>Put the app on your PC</h2>
+    <span class="mins">20 minutes</span>
   </div>
   <p class="stage-intro">
-    This is the switch that decides what the app looks at. Only emails you tag
-    <strong>RFQ</strong> are ever read — everything else in the mailbox is
-    invisible to it.
+    Mostly waiting for downloads. Do this on the PC you will actually use — the
+    app runs there and nowhere else.
   </p>
 
   <ol class="steps">
     <li>
-      <h3>Open the sales mailbox in Outlook</h3>
+      <h3>Install Python</h3>
       <p>
-        Not your own inbox — <strong>sales@edmzone.co.uk</strong>. In the folder
-        list down the left, click into the sales mailbox so you are looking at
-        its messages.
+        The engine the app runs on. Go to
+        <a href="https://www.python.org/downloads/">python.org/downloads</a> and
+        click the big yellow <strong>Download Python</strong> button, then run
+        the file it gives you.
+      </p>
+      <div class="note danger">
+        <div class="head">Tick this box before clicking Install</div>
+        <p>
+          <strong>Add python.exe to PATH</strong> — bottom of the very first
+          screen, off by default. Without it Stage A step 4 stops and cannot
+          find Python.
+        </p>
+      </div>
+    </li>
+
+    <li>
+      <h3>Download the app</h3>
+      <div class="click">https://github.com/ROGER-EDM-Zone/Automated-Quoting-Machine</div>
+      <p>Green <strong>Code</strong> button, then <strong>Download ZIP</strong>.</p>
+    </li>
+
+    <li>
+      <h3>Unblock it, then unzip it</h3>
+      <p>
+        Find the ZIP in Downloads. <strong>Before opening it</strong>, right-click
+        → <strong>Properties</strong> → tick <strong>Unblock</strong> if it is
+        there → OK.
       </p>
       <div class="note warn">
-        <div class="head">Why this matters</div>
+        <div class="head">Why</div>
         <p>
-          Tags belong to a mailbox. If you make it while looking at your own
-          inbox, it lands on your list and the app will never see it.
+          Windows marks everything from the internet as untrusted and that mark
+          spreads to every file inside. Unblocking now saves a confusing failure
+          in a minute.
         </p>
       </div>
+      <p>
+        Then right-click → <strong>Extract All</strong>. Put it somewhere you
+        will find again — <code>C:\EDMZone\Quoting</code> is good. Avoid the
+        Desktop and anything inside OneDrive.
+      </p>
     </li>
 
     <li>
-      <h3>Create the tag</h3>
-      <p>Right-click any email in that mailbox, then:</p>
-      <div class="click">Categorise → All Categories → New</div>
-      <p>Type the name exactly:</p>
-      <div class="type">RFQ</div>
+      <h3>Run the setup</h3>
+      <p>Open the folder, go into <code>install</code>, and double-click:</p>
+      <div class="type">START-HERE-Setup.bat</div>
       <p>
-        Three capital letters. No space after. Pick any colour you like — the
-        colour makes no difference to the app, only to your eyes.
+        A black window works through the steps printing <code>[ok]</code> as each
+        passes. Installing the components takes a few minutes the first time.
       </p>
-      <p>Click OK, then OK again.</p>
-      <div class="note danger">
-        <div class="head">Get this exactly right</div>
-        <p>
-          <code>Rfq</code>, <code>rfq</code> or <code>RFQ&nbsp;</code> with a
-          trailing space are all different tags as far as Microsoft is concerned.
-          If it is wrong, nothing happens and nothing tells you — mail arrives,
-          the app looks for <code>RFQ</code>, finds nothing, and stays quiet.
-        </p>
-        <p>
-          The connection check in Stage D catches this and names it. But it is
-          easier to get right now.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Tag one real RFQ, ready for later</h3>
-      <p>
-        Find a genuine RFQ that arrived recently — one with a drawing attached is
-        ideal. Right-click it, Categorise, RFQ.
-      </p>
-      <p>That is your test message for Stage E. Leave it there.</p>
       <div class="expect">
-        <div class="head">You should now see</div>
-        A coloured RFQ label on that email in the sales mailbox.
+        <div class="head">You should end with</div>
+        <p style="margin:0">
+          <strong>Setup finished</strong> in green, and an
+          <strong>EDM Zone Quoting</strong> shortcut on your Desktop.
+        </p>
+      </div>
+      <div class="note">
+        <div class="head">If it stops in red</div>
+        <p>
+          The message says what to fix. Sort it and run the same file again —
+          starting over is always safe.
+        </p>
       </div>
     </li>
   </ol>
@@ -314,108 +341,44 @@
   <!-- ============ B ============ -->
   <div class="stage">
     <span class="stage-n">STAGE B</span>
-    <h2>Give the app permission to read that mailbox</h2>
-    <span class="mins">10 minutes</span>
+    <h2>Get a key for reading drawings</h2>
+    <span class="mins">5 minutes</span>
   </div>
-  <p class="stage-intro">
-    This is Microsoft's side. You are registering the app so it can ask for
-    access, then signing in yourself to grant it. It is all on one website and
-    you need nothing from anyone else.
-  </p>
 
   <ol class="steps">
     <li>
-      <h3>Open the Microsoft admin page</h3>
-      <p>Go to:</p>
-      <div class="click">https://entra.microsoft.com</div>
+      <h3>Create the account and set a spend cap</h3>
       <p>
-        Sign in with your normal EDM Zone account. If it says you do not have
-        access, you are not an administrator — stop here and tell me, there is a
-        different route.
+        Go to <a href="https://console.anthropic.com">console.anthropic.com</a>,
+        sign up, and add a card under <strong>Billing</strong>. Set a monthly
+        limit while you are there — £20 is plenty to start.
       </p>
     </li>
 
     <li>
-      <h3>Start a new registration</h3>
-      <p>Down the left-hand side:</p>
-      <div class="click">Applications → App registrations → + New registration</div>
-      <p>Fill in the form:</p>
-      <ul>
-        <li><strong>Name:</strong> <code>EDM Zone Quoting</code></li>
-        <li>
-          <strong>Supported account types:</strong> the first option —
-          <em>Accounts in this organizational directory only</em>
-        </li>
-        <li><strong>Redirect URI:</strong> leave completely blank</li>
-      </ul>
-      <p>Click <strong>Register</strong>.</p>
+      <h3>Make a key</h3>
+      <div class="click">API keys → Create Key</div>
+      <p>
+        Copy what it shows you. It starts <code>sk-ant-</code> and is shown
+        <strong>once</strong>.
+      </p>
     </li>
 
     <li>
-      <h3>Copy the two ID numbers</h3>
+      <h3>Put it in the settings file</h3>
       <p>
-        The page that appears has two long numbers near the top. Copy both into
-        Notepad — you need them in Stage C.
+        In the app folder go into <code>backend</code> and find <code>.env</code>
+        — just a dot and "env". Right-click → <strong>Open with</strong> →
+        <strong>Notepad</strong>. Find this line and paste the key after the
+        equals sign:
       </p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>On the screen</th><th>Looks like</th></tr></thead>
-          <tbody>
-            <tr><td>Application (client) ID</td><td>a string of letters, numbers and dashes</td></tr>
-            <tr><td>Directory (tenant) ID</td><td>should be 2a4247d5-e81d-4869-84f7-d84d64122c7b</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="note ok">
-        <div class="head">These two are safe</div>
+<pre><code>AQM_ANTHROPIC_API_KEY=<span class="cmt">paste it here</span></code></pre>
+      <p>No quote marks, no spaces. Save and close.</p>
+      <div class="note danger">
+        <div class="head">That file is now a password</div>
         <p>
-          Neither is a password. They identify the app but grant nothing on their
-          own, so it is fine to email them or paste them to me.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Turn on the sign-in method</h3>
-      <p>In the menu down the left of this app's page:</p>
-      <div class="click">Authentication → scroll to the bottom → Advanced settings</div>
-      <p>
-        Find <strong>Allow public client flows</strong> and switch it to
-        <strong>Yes</strong>. Click <strong>Save</strong> at the top.
-      </p>
-      <div class="note warn">
-        <div class="head">The step everyone misses</div>
-        <p>
-          Skip this and Stage D fails with an unhelpful message about clients.
-          If that happens, come back here — this is almost always why.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Say what the app may do</h3>
-      <div class="click">API permissions → + Add a permission → Microsoft Graph</div>
-      <p>
-        You are then asked to choose between two kinds. Choose
-        <strong>Delegated permissions</strong>.
-      </p>
-      <p>
-        In the search box that appears, type <code>Mail.Read</code> and tick it.
-        Then clear the box, type <code>Mail.ReadWrite</code> and tick that too.
-        Click <strong>Add permissions</strong>.
-      </p>
-      <div class="expect">
-        <div class="head">You should now see</div>
-        Two rows in the list: Mail.Read and Mail.ReadWrite, both marked
-        <em>Delegated</em>. There may be a third called User.Read that was
-        already there — leave it.
-      </div>
-      <div class="note ok">
-        <div class="head">No "Grant admin consent" needed</div>
-        <p>
-          You may see that button. You do not need to press it. Delegated
-          permissions are granted by you when you sign in during Stage D, and the
-          app can only ever see what you can see.
+          Do not email it, do not put it in OneDrive, and do not paste its
+          contents into a chat window.
         </p>
       </div>
     </li>
@@ -424,297 +387,138 @@
   <!-- ============ C ============ -->
   <div class="stage">
     <span class="stage-n">STAGE C</span>
-    <h2>Put the app on your PC</h2>
-    <span class="mins">15 minutes</span>
+    <h2>Start it</h2>
+    <span class="mins">5 minutes</span>
   </div>
-  <p class="stage-intro">
-    Mostly waiting for things to download. Do this on the PC that will be left
-    on — the app only runs while that machine is awake.
-  </p>
 
   <ol class="steps">
     <li>
-      <h3>Install Python</h3>
+      <h3>Double-click the Desktop shortcut</h3>
       <p>
-        This is the engine the app runs on. Go to
-        <a href="https://www.python.org/downloads/">python.org/downloads</a> and
-        click the big yellow <strong>Download Python</strong> button.
-      </p>
-      <p>Run the file it downloads. On the very first screen of the installer:</p>
-      <div class="note danger">
-        <div class="head">Tick this box before clicking Install</div>
-        <p>
-          <strong>Add python.exe to PATH</strong> — it is a small tick box at the
-          bottom, and it is off by default. Without it the setup in step 4 will
-          not find Python and will stop.
-        </p>
-      </div>
-      <p>Then click <strong>Install Now</strong> and wait.</p>
-      <div class="note">
-        <div class="head">If Python is already on this PC</div>
-        <p>
-          Fine — the setup checks the version. It needs 3.11 or newer and will
-          tell you if what is there is too old.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Download the app</h3>
-      <p>Go to the project on GitHub:</p>
-      <div class="click">https://github.com/ROGER-EDM-Zone/Automated-Quoting-Machine</div>
-      <p>
-        Click the green <strong>Code</strong> button, then
-        <strong>Download ZIP</strong>.
-      </p>
-    </li>
-
-    <li>
-      <h3>Unblock it, then unzip it</h3>
-      <p>
-        Find the ZIP in your Downloads. <strong>Before opening it</strong>,
-        right-click it and choose <strong>Properties</strong>. At the bottom of
-        that window, if there is an <strong>Unblock</strong> tick box, tick it and
-        click OK.
+        <strong>EDM Zone Quoting</strong>. A black window opens and stays open —
+        that is the app running. Your browser opens by itself at
+        <code>http://localhost:8000</code> after a few seconds.
       </p>
       <div class="note warn">
-        <div class="head">Why</div>
-        <p>
-          Windows marks everything downloaded from the internet as untrusted, and
-          that mark spreads to every file inside the ZIP. Unblocking now saves a
-          confusing failure later.
-        </p>
+        <div class="head">Leave the black window open</div>
+        <p>Closing it stops the app. Minimise it instead.</p>
       </div>
-      <p>
-        Now right-click the ZIP → <strong>Extract All</strong>. Put it somewhere
-        you will find again — <code>C:\EDMZone\Quoting</code> is a good choice.
-        Avoid Desktop and OneDrive folders.
-      </p>
-    </li>
-
-    <li>
-      <h3>Run the setup</h3>
-      <p>Open the folder you just extracted, go into <code>install</code>, and double-click:</p>
-      <div class="type">START-HERE-Setup.bat</div>
-      <p>
-        A black window opens and works through the steps, printing
-        <code>[ok]</code> as each one passes. The longest part is installing the
-        app's components — a few minutes on a first run.
-      </p>
       <div class="expect">
-        <div class="head">You should end with</div>
+        <div class="head">You should see</div>
         <p style="margin:0">
-          <strong>Setup finished</strong> in green, and a new
-          <strong>EDM Zone Quoting</strong> shortcut on your Desktop.
-        </p>
-      </div>
-      <div class="note">
-        <div class="head">If it stops with a red message</div>
-        <p>
-          The message says what to fix. Sort that, then run the same file again —
-          starting over is always safe, it picks up where it left off.
+          Three drop zones across the top — <strong>Wire EDM only</strong>,
+          <strong>Spark erosion only</strong>, <strong>Full supply</strong> —
+          and the working lists beneath them, all empty.
         </p>
       </div>
     </li>
 
     <li>
-      <h3>Get an Anthropic key, for reading drawings</h3>
+      <h3>Check your rates went in</h3>
       <p>
-        Go to <a href="https://console.anthropic.com">console.anthropic.com</a>,
-        create an account, and add a payment card under Billing. Set a monthly
-        spend limit while you are there — start low, £20 is plenty to begin with.
+        Click <strong>Rates</strong> in the menu. Every process should read
+        <strong>£65.00/h</strong>. Click <strong>Rules</strong> and you should see
+        the allowance: 4mm on the section, 10mm on the length.
       </p>
-      <div class="click">API keys → Create Key</div>
       <p>
-        Copy the key it shows you. Like the client secret, it is shown once. It
-        starts <code>sk-ant-</code>.
+        Both are yours and both are editable here — changing a rate is you typing
+        a number, no developer and no reinstall.
       </p>
-      <div class="note danger">
-        <div class="head">This one is a password</div>
-        <p>
-          Do not email it, and do not paste it into this chat. It goes straight
-          into the settings file in the next step.
-        </p>
-      </div>
     </li>
   </ol>
 
   <!-- ============ D ============ -->
   <div class="stage">
     <span class="stage-n">STAGE D</span>
-    <h2>Connect it to the mailbox</h2>
-    <span class="mins">10 minutes</span>
-  </div>
-
-  <ol class="steps">
-    <li>
-      <h3>Put your details in the settings file</h3>
-      <p>
-        In the app folder, go into <code>backend</code> and find the file called
-        <code>.env</code> — just a dot and "env", no name before it. Right-click
-        it → <strong>Open with</strong> → <strong>Notepad</strong>.
-      </p>
-      <p>Fill in the three blanks from Stages B and C:</p>
-<pre><code>AQM_GRAPH_TENANT_ID=<span class="cmt">paste the Directory (tenant) ID</span>
-AQM_GRAPH_CLIENT_ID=<span class="cmt">paste the Application (client) ID</span>
-AQM_ANTHROPIC_API_KEY=<span class="cmt">paste the sk-ant-... key</span></code></pre>
-      <p>
-        No quote marks, no spaces around the <code>=</code>. Everything else in
-        the file is already correct. Save and close.
-      </p>
-      <div class="note danger">
-        <div class="head">This file is now sensitive</div>
-        <p>
-          It holds a key that spends money and details that reach your mailbox.
-          Do not email it, do not copy it into OneDrive or SharePoint, and do not
-          paste its contents into a chat.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Sign in</h3>
-      <p>Back in the <code>install</code> folder, double-click:</p>
-      <div class="type">Sign-in.bat</div>
-      <p>
-        It shows a web address and a short code. Open that address in your
-        browser, type the code, and sign in
-        <strong>as sales@edmzone.co.uk</strong> — or as yourself if you can open
-        that mailbox from your own account.
-      </p>
-      <p>
-        Microsoft will ask you to confirm the app may read your mail. Say yes.
-        Then go back to the black window; it finishes on its own.
-      </p>
-      <div class="expect">
-        <div class="head">You should see</div>
-        <p style="margin:0">
-          <code>[ok] Signed in</code>, then
-          <code>[ok] Reading: Sales - EDM Zone</code>.
-        </p>
-      </div>
-    </li>
-
-    <li>
-      <h3>Check the connection</h3>
-      <p>Double-click:</p>
-      <div class="type">Check-connection.bat</div>
-      <p>
-        This walks the whole connection and stops at the first thing wrong. It is
-        read-only — it cannot change or send anything, so run it whenever you
-        like.
-      </p>
-      <div class="expect">
-        <div class="head">You want to see</div>
-        <p style="margin:0">
-          Green ticks all the way down, ending with the number of tagged messages
-          waiting — which should include the one you tagged in Stage A.
-        </p>
-      </div>
-      <div class="note">
-        <div class="head">If anything is red</div>
-        <p>
-          Read it — it names the problem and the fix. If it does not make sense,
-          send me the text and I will tell you what it means.
-        </p>
-      </div>
-    </li>
-  </ol>
-
-  <!-- ============ E ============ -->
-  <div class="stage">
-    <span class="stage-n">STAGE E</span>
-    <h2>Start it, and watch a real RFQ come through</h2>
-    <span class="mins">10 minutes</span>
+    <h2>Drag your first RFQ in</h2>
+    <span class="mins">the actual work</span>
   </div>
   <p class="stage-intro">
-    One thing to know before you look: <strong>it will not produce a price</strong>,
-    and that is right. There are no rates in it yet and it has no defaults, so it
-    refuses to quote rather than invent a figure. What you are testing here is
-    whether it reads your drawings properly.
+    This is the bit you will do every day. Everything above happens once.
   </p>
 
   <ol class="steps">
     <li>
-      <h3>Start the app</h3>
-      <p>Double-click <strong>EDM Zone Quoting</strong> on your Desktop.</p>
+      <h3>Pick the right zone</h3>
       <p>
-        A black window opens and stays open — that is the app running. Your
-        browser opens by itself at <code>http://localhost:8000</code> after a few
-        seconds.
+        In Outlook, find an RFQ. Drag it straight out of the message list and
+        drop it on one of the three:
       </p>
-      <div class="note warn">
-        <div class="head">Leave the black window open</div>
-        <p>
-          Closing it stops the app. Minimise it instead. If you close it by
-          accident, just double-click the Desktop shortcut again.
-        </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zone</th><th>Use it when</th></tr></thead>
+          <tbody>
+            <tr><td>Wire EDM only</td><td>Free issue, wire work. Nothing else gets added to the routing</td></tr>
+            <tr><td>Spark erosion only</td><td>Free issue, spark work. Same</td></tr>
+            <tr><td>Full supply</td><td>You are buying the material. Operations worked out from the drawing</td></tr>
+          </tbody>
+        </table>
       </div>
-    </li>
-
-    <li>
-      <h3>Watch the RFQ arrive</h3>
       <p>
-        The app checks the mailbox every five minutes on its own. To see it now
-        rather than waiting, click <strong>Check for new enquiries</strong> at the
-        top of the queue.
+        Several at once is fine. <code>.msg</code> straight from Outlook works;
+        so does <code>.eml</code>.
       </p>
       <div class="expect">
         <div class="head">You should see</div>
         <p style="margin:0">
-          The email you tagged in Stage A appearing as a row in the queue, with
-          the customer, the subject and its drawings.
+          A line saying what came in and how many drawings, then the enquiry
+          appearing in the lists below.
+        </p>
+      </div>
+      <div class="note">
+        <div class="head">Dropped it on the wrong one?</div>
+        <p>
+          Not a problem — open the enquiry and change the job type there. And
+          dragging the same email in again never overwrites a correction you
+          have made.
         </p>
       </div>
     </li>
 
     <li>
-      <h3>Open it and look properly</h3>
+      <h3>Open it and read what it made of the drawing</h3>
       <p>
-        Click the subject to open it. This is the moment worth taking slowly —
-        what the AI read off the drawing, what it was unsure of, and what it
-        flagged.
+        Click the subject. You get what it read with a confidence figure against
+        each field, what it honestly could not read, the operations it proposes,
+        and the cost build-up.
       </p>
-      <div class="note warn">
-        <div class="head">There will be no price, and that is correct</div>
-        <p>
-          You will see red <strong>blocking</strong> flags saying there is no
-          rate for milling, or turning, or wire. That is the app working as
-          designed, not a fault: it has no rates in it yet, and it has no
-          default rate anywhere in it. It refuses to quote rather than guess a
-          number nobody in your business chose.
-        </p>
-        <p>
-          Nothing prices until you put your hourly rates in on the
-          <strong>Rates</strong> screen. That is deliberately the next
-          conversation, because it depends on the one question I still need
-          answered — whether your £65/hour is what the customer pays or what an
-          hour costs you.
-        </p>
-      </div>
-      <p>
-        So what you are judging at this stage is only this: did it
-        <strong>read the drawing correctly</strong>? Material, quantity,
-        tolerance, dimensions, and what it says it was unsure about.
-      </p>
-      <div class="note ok">
-        <div class="head">Nothing can escape</div>
-        <p>
-          The app has no permission to send email. It can write a draft into
-          Outlook; a person has to open it and press send. That is enforced by
-          Microsoft, not by a setting I could get wrong.
-        </p>
-      </div>
+      <p>Three things are worth knowing how to read at a glance:</p>
+      <ul>
+        <li>
+          A time in <strong>amber dashed</strong> is one the AI estimated from a
+          past job — check it. Plain text is calculated.
+        </li>
+        <li>
+          <strong>not read</strong> means it could not read that field and is
+          saying so rather than guessing.
+        </li>
+        <li>
+          A material price in amber marked <strong>estimate</strong> is my
+          ballpark figure, not one read off a supplier's page.
+        </li>
+      </ul>
     </li>
 
     <li>
-      <h3>Tell me how it did</h3>
+      <h3>Tell it what it could not know</h3>
       <p>
-        Send me what it read versus what you would have said. That comparison is
-        the whole point of getting this far — it tells us whether this saves you
-        time or just gives you something new to check.
+        At the bottom is <strong>Notes</strong>. Type in plain English — "we
+        already have the electrode for this, drop 15 minutes of setup", or "this
+        one is awkward, add 15%" — and it reprices.
       </p>
-      <p>Then we do the numbers: your rates, your allowance, your material prices.</p>
+      <p>
+        It will not invent a percentage. If no rule in your rules table covers
+        what you asked, it asks you rather than picking a number.
+      </p>
+    </li>
+
+    <li>
+      <h3>Nothing sends without you</h3>
+      <p>
+        Approve, and it writes a draft reply. A person still has to open that
+        draft and press send. The app has no permission to send email at all —
+        that is enforced by Microsoft, not by a setting I could get wrong.
+      </p>
     </li>
   </ol>
 

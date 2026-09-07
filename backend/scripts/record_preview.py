@@ -31,6 +31,12 @@ from app.models import Customer, Enquiry
 
 OUT = Path(__file__).resolve().parents[2] / "frontend" / "demo" / "fixtures.json"
 
+#: The API lives under /api on the server. The front end's own code asks for
+#: "/queue" and its transport adds the prefix — so the preview, which swaps
+#: that transport out, must be keyed by the unprefixed path. Recorded with
+#: the prefix, stored without it.
+API_PREFIX = "/api"
+
 #: Paths that do not depend on which rows exist.
 STATIC_PATHS = [
     "/queue/lanes",
@@ -71,7 +77,7 @@ def main() -> int:
         print("Nothing to record — seed the database first (scripts.seed --example).")
         return 1
 
-    lanes = [row["lane"] for row in TestClient(app).get("/queue/lanes").json()]
+    lanes = [row["lane"] for row in TestClient(app).get(f"{API_PREFIX}/queue/lanes").json()]
 
     paths = [
         *STATIC_PATHS,
@@ -90,7 +96,7 @@ def main() -> int:
     recorded: dict[str, object] = {}
     missing: list[str] = []
     for path in paths:
-        response = client.get(path)
+        response = client.get(f"{API_PREFIX}{path}")
         if response.status_code != 200:
             missing.append(f"{path} -> HTTP {response.status_code}")
             continue

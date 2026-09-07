@@ -37,8 +37,10 @@ function PreviewBanner() {
         <>
           <strong>Static preview.</strong> The real estimator workspace, showing
           responses recorded from a running backend. Navigation works; anything
-          that would write is inert. All figures are illustrative placeholders,
-          not real rates.
+          that would write is inert.{" "}
+          <strong>The £65/h rates and the 4mm/10mm allowance are EDM Zone's own.</strong>{" "}
+          Material prices are estimates and are marked as such; the cycle times
+          are still placeholders.
         </>
       )}
     </div>
