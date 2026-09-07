@@ -61,8 +61,40 @@ async function inert<T>(path: string): Promise<T> {
   return structuredClone(found ?? {}) as T;
 }
 
+/**
+ * Dropping an email cannot work without a backend to read it, so the preview
+ * says so instead of failing. It answers in the shape the queue expects — the
+ * same fields, no enquiries — so the page renders its "nothing came in" path
+ * rather than throwing.
+ */
+async function inertUpload<T>(body: FormData): Promise<T> {
+  window.dispatchEvent(new CustomEvent("aqm-demo-write"));
+  const names = body
+    .getAll("files")
+    .map((f) => (f instanceof File ? f.name : String(f)));
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  return {
+    ingested: [],
+    failed: names.map((filename) => ({
+      filename,
+      reason:
+        "This is a static preview with no backend, so the email was not read. " +
+        "Install the app to drop real RFQs in.",
+    })),
+    new_count: 0,
+    already_known: 0,
+  } as T;
+}
+
+/**
+ * Must offer everything `src/lib/api.ts` offers. A method missing here does
+ * not fail at build time — it fails in the browser as "not a function" when
+ * somebody clicks the thing, which is how the drop zones broke in the
+ * preview. `tests/demo-api.test.mjs` compares the two.
+ */
 export const api = {
   get: <T,>(path: string) => read<T>(path),
+  upload: <T,>(_path: string, body: FormData) => inertUpload<T>(body),
   post: <T,>(path: string, _body?: unknown) => inert<T>(path),
   patch: <T,>(path: string, _body: unknown) => inert<T>(path),
   put: <T,>(path: string, _body: unknown) => inert<T>(path),
