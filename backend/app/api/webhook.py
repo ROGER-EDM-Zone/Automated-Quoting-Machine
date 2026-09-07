@@ -13,16 +13,19 @@ from fastapi import (
     APIRouter,
     BackgroundTasks,
     Depends,
+    File,
     HTTPException,
     Query,
     Request,
     Response,
+    UploadFile,
 )
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import SessionLocal, get_db
 from app.deps import CurrentUser, get_current_user
+from app.services.email_file import EmailFileError, parse_email_file
 from app.services.graph import GraphError, GraphNotConfigured, get_graph_client
 from app.services.intake import ingest_message, poll_mailbox
 
@@ -200,3 +203,66 @@ def renew_subscription(subscription_id: str, _user: CurrentUser = Depends(get_cu
         from fastapi import HTTPException
 
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/intake/upload")
+async def upload_emails(
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    _user: CurrentUser = Depends(get_current_user),
+):
+    """Take emails dragged out of Outlook and turn them into enquiries.
+
+    The same pipeline the mailbox uses — same parsing of forwarded chains,
+    same attachment classification, same duplicate detection — reached by a
+    different door. That is deliberate: an enquiry that arrived by hand must
+    be indistinguishable from one that arrived by itself, or what is learned
+    from testing one says nothing about the other.
+
+    It means the system can be used, and judged, before anybody has arranged
+    a mailbox connection. Each file is handled on its own, so one unreadable
+    message does not lose the rest of the batch.
+    """
+    ingested: list[dict] = []
+    failed: list[dict] = []
+
+    for upload in files:
+        name = upload.filename or "message"
+        try:
+            data = await upload.read()
+            message = parse_email_file(data, name)
+        except EmailFileError as exc:
+            failed.append({"filename": name, "reason": str(exc)})
+            continue
+        except Exception as exc:  # noqa: BLE001 - one bad file must not lose the batch
+            logger.exception("Could not read %s", name)
+            failed.append({"filename": name, "reason": f"Could not read this file: {exc}"})
+            continue
+
+        try:
+            result = ingest_message(db, message)
+            db.commit()
+        except Exception as exc:  # noqa: BLE001 - same reasoning
+            db.rollback()
+            logger.exception("Could not ingest %s", name)
+            failed.append({"filename": name, "reason": f"Could not file this email: {exc}"})
+            continue
+
+        ingested.append(
+            {
+                "filename": name,
+                "enquiry_id": result.enquiry.id,
+                "subject": result.enquiry.subject,
+                "created": result.created,
+                "attachments": result.attachments_stored,
+                "drawings": result.drawings_found,
+                "customer_matched": result.enquiry.customer is not None,
+            }
+        )
+
+    return {
+        "ingested": ingested,
+        "failed": failed,
+        "new_count": sum(1 for item in ingested if item["created"]),
+        "already_known": sum(1 for item in ingested if not item["created"]),
+    }

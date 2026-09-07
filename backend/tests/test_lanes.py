@@ -138,7 +138,7 @@ def spread(api):
 
 
 def lane_counts(client):
-    return {row["lane"]: row["count"] for row in client.get("/queue/lanes").json()}
+    return {row["lane"]: row["count"] for row in client.get("/api/queue/lanes").json()}
 
 
 def test_the_counts_total_every_enquiry_in_the_system(spread):
@@ -163,7 +163,7 @@ def test_a_tabs_count_matches_the_rows_it_shows(spread, lane):
     """The invariant worth having a test for. A badge saying three over a
     list of two is how people stop trusting the screen."""
     counted = lane_counts(spread)[lane]
-    rows = spread.get(f"/queue?lane={lane}").json()
+    rows = spread.get(f"/api/queue?lane={lane}").json()
     assert len(rows) == counted
     assert all(row["lane"] == lane for row in rows)
 
@@ -171,25 +171,25 @@ def test_a_tabs_count_matches_the_rows_it_shows(spread, lane):
 def test_asking_for_a_closed_lane_returns_closed_work(spread):
     # Without this, clicking "Won / lost" would show an empty list, because
     # the queue hides closed enquiries by default.
-    rows = spread.get(f"/queue?lane={Lane.CLOSED.value}").json()
+    rows = spread.get(f"/api/queue?lane={Lane.CLOSED.value}").json()
     assert [row["subject"] for row in rows] == ["won it"]
 
-    sent = spread.get(f"/queue?lane={Lane.AWAITING_FEEDBACK.value}").json()
+    sent = spread.get(f"/api/queue?lane={Lane.AWAITING_FEEDBACK.value}").json()
     assert [row["subject"] for row in sent] == ["out with the customer"]
 
 
 def test_the_blocked_quote_is_in_needs_attention_not_ready_to_send(spread):
-    ready = spread.get(f"/queue?lane={Lane.READY_TO_SEND.value}").json()
+    ready = spread.get(f"/api/queue?lane={Lane.READY_TO_SEND.value}").json()
     assert [row["subject"] for row in ready] == ["ready to go"]
 
-    attention = {row["subject"] for row in spread.get("/queue?lane=needs_attention").json()}
+    attention = {row["subject"] for row in spread.get("/api/queue?lane=needs_attention").json()}
     assert "approved but blocked" in attention
 
 
 def test_every_enquiry_appears_in_exactly_one_lane(spread):
     seen: dict[int, str] = {}
     for lane in LANE_ORDER:
-        for row in spread.get(f"/queue?lane={lane.value}").json():
+        for row in spread.get(f"/api/queue?lane={lane.value}").json():
             assert row["enquiry_id"] not in seen, (
                 f"enquiry {row['enquiry_id']} is in both {seen.get(row['enquiry_id'])} "
                 f"and {lane.value}"
@@ -199,12 +199,12 @@ def test_every_enquiry_appears_in_exactly_one_lane(spread):
 
 
 def test_an_unknown_lane_is_rejected_rather_than_silently_ignored(spread):
-    response = spread.get("/queue?lane=ready_to_sned")
+    response = spread.get("/api/queue?lane=ready_to_sned")
     assert response.status_code == 422
     assert "ready_to_send" in response.json()["detail"]
 
 
 def test_the_plain_queue_still_works_and_carries_the_lane(spread):
-    rows = spread.get("/queue").json()
+    rows = spread.get("/api/queue").json()
     assert rows
     assert all("lane" in row for row in rows)

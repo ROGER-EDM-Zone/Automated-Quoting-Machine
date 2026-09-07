@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     // The API runs alongside in development; same-origin keeps auth simple.
-    proxy: { "/api": { target: "http://localhost:8000", changeOrigin: true, rewrite: (p) => p.replace(/^\/api/, "") } },
+    // No rewrite: the backend serves the API under /api in every environment,
+    // so development and the installed app address it identically.
+    proxy: { "/api": { target: "http://localhost:8000", changeOrigin: true } },
   },
 });

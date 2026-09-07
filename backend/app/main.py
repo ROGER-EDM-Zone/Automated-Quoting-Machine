@@ -87,6 +87,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Everything the API answers lives under /api. It has to: the front end
+# routes in the browser, and its addresses are the same words — /queue,
+# /enquiry/12, /admin/rates. Sharing one port without this prefix means a
+# hard refresh on /queue returns the JSON list instead of the screen, which
+# is exactly what it did before the prefix was added.
+API_PREFIX = "/api"
+
 for router in (
     webhook.router,
     enquiries.router,
@@ -97,10 +104,10 @@ for router in (
     admin.router,
     reports.router,
 ):
-    app.include_router(router)
+    app.include_router(router, prefix=API_PREFIX)
 
 
-@app.get("/health", tags=["ops"])
+@app.get("/api/health", tags=["ops"])
 def health() -> dict:
     return {
         "status": "ok",

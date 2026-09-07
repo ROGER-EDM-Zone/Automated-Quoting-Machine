@@ -117,7 +117,7 @@ def seeded(api):
     since = (date.today() - timedelta(days=200)).isoformat()
 
     customer = client.post(
-        "/admin/customers",
+        "/api/admin/customers",
         json={
             "name": "Bracken Engineering",
             "domain": "bracken-eng.example",
@@ -136,7 +136,7 @@ def seeded(api):
     ):
         assert (
             client.post(
-                "/admin/rates",
+                "/api/admin/rates",
                 json={"process": process, "hourly_rate": rate, "effective_from": since},
             ).status_code
             == 201
@@ -144,7 +144,7 @@ def seeded(api):
 
     assert (
         client.post(
-            "/admin/rules",
+            "/api/admin/rules",
             json={
                 "rule_key": "min_quote_value",
                 "trigger_description": "Minimum order value",
@@ -155,7 +155,7 @@ def seeded(api):
         == 201
     )
     rush = client.post(
-        "/admin/rules",
+        "/api/admin/rules",
         json={
             "rule_key": "rush_uplift",
             "trigger_description": "Delivery inside 5 working days",
@@ -200,7 +200,7 @@ def seeded(api):
 # --------------------------------------------------------------------------
 def test_health_reports_configuration_honestly(api):
     client, *_ = api
-    body = client.get("/health").json()
+    body = client.get("/api/health").json()
     assert body["status"] == "ok"
     assert body["auth_required"] is False
     assert body["ai_configured"] is False
@@ -211,16 +211,16 @@ def test_a_new_rate_end_dates_the_one_it_replaces(api):
     old = (date.today() - timedelta(days=100)).isoformat()
     new = date.today().isoformat()
     first = client.post(
-        "/admin/rates",
+        "/api/admin/rates",
         json={"process": Process.GRIND.value, "hourly_rate": "40.00", "effective_from": old},
     ).json()
     client.post(
-        "/admin/rates",
+        "/api/admin/rates",
         json={"process": Process.GRIND.value, "hourly_rate": "44.00", "effective_from": new},
     )
-    rates = {r["id"]: r for r in client.get("/admin/rates?process=grind").json()}
+    rates = {r["id"]: r for r in client.get("/api/admin/rates?process=grind").json()}
     assert rates[first["id"]]["effective_to"] == new
-    current = client.get("/admin/rates?process=grind&current_only=true").json()
+    current = client.get("/api/admin/rates?process=grind&current_only=true").json()
     assert len(current) == 1 and current[0]["hourly_rate"] == "44.00"
 
 
@@ -242,7 +242,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
 
     # --- extract -------------------------------------------------------
     stub.responses.append(_extraction_payload())
-    extracted = client.post(f"/enquiries/{enquiry.id}/extract")
+    extracted = client.post(f"/api/enquiries/{enquiry.id}/extract")
     assert extracted.status_code == 200, extracted.text
     body = extracted.json()
     assert body["status"] == EnquiryStatus.EXTRACTED.value
@@ -255,7 +255,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
 
     # --- classify ------------------------------------------------------
     stub.responses.append(_classification_payload())
-    classified = client.post(f"/enquiries/{enquiry.id}/classify")
+    classified = client.post(f"/api/enquiries/{enquiry.id}/classify")
     assert classified.status_code == 200, classified.text
     part = classified.json()["parts"][0]
     assert part["job_type"] == JobType.SERVICE_ONLY.value
@@ -267,7 +267,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
 
     # --- pricing is refused while the times are missing? No: it prices at
     # --- zero, but a blocking flag says the quote is not complete.
-    priced = client.post(f"/enquiries/{enquiry.id}/price", json={})
+    priced = client.post(f"/api/enquiries/{enquiry.id}/price", json={})
     assert priced.status_code == 200, priced.text
     assert priced.json()["quote_value"] == "150.00"  # min value floor
     assert priced.json()["min_value_applied"] is True
@@ -275,7 +275,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
     # --- supply real times --------------------------------------------
     part_id = part["id"]
     ops = client.put(
-        f"/parts/{part_id}/operations",
+        f"/api/parts/{part_id}/operations",
         json=[
             {
                 "op_number": 10,
@@ -305,7 +305,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
     )
     assert ops.status_code == 200, ops.text
 
-    quote = client.post(f"/enquiries/{enquiry.id}/price", json={}).json()
+    quote = client.post(f"/api/enquiries/{enquiry.id}/price", json={}).json()
     # mill 45+22*4=133m @55 = 121.92 ; wire 30+18*4=102m @42 = 71.40
     # qc 10+4*4=26m @30 = 13.00 ; labour 206.32, margin 30% = 61.90
     assert quote["labour_total"] == "206.32"
@@ -320,7 +320,7 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
     assert quote["min_value_applied"] is False
 
     # --- workspace -----------------------------------------------------
-    workspace = client.get(f"/enquiries/{enquiry.id}").json()
+    workspace = client.get(f"/api/enquiries/{enquiry.id}").json()
     assert workspace["breakdown"]["reconciles"] is True
     assert workspace["breakdown"]["quote_value"] == quote["quote_value"]
     assert workspace["breakdown"]["rounding_adjustment"] == "0.02"
@@ -337,28 +337,28 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
 
     # --- approval is blocked while flags are unresolved -----------------
     quote_id = quote["id"]
-    blockers = client.get(f"/quotes/{quote_id}/blockers").json()
+    blockers = client.get(f"/api/quotes/{quote_id}/blockers").json()
     assert blockers, "unread fields should be blocking approval"
-    refused = client.post(f"/quotes/{quote_id}/approve", json={})
+    refused = client.post(f"/api/quotes/{quote_id}/approve", json={})
     assert refused.status_code == 409
     assert refused.json()["detail"]["blocking_flags"]
 
     for flag in blockers:
         assert (
             client.post(
-                f"/flags/{flag['id']}/resolve", json={"note": "checked against the drawing"}
+                f"/api/flags/{flag['id']}/resolve", json={"note": "checked against the drawing"}
             ).status_code
             == 200
         )
 
-    approved = client.post(f"/quotes/{quote_id}/approve", json={"lead_time_days": 10})
+    approved = client.post(f"/api/quotes/{quote_id}/approve", json={"lead_time_days": 10})
     assert approved.status_code == 200, approved.text
     assert approved.json()["status"] == QuoteStatus.APPROVED.value
     assert approved.json()["approved_by"] == "estimator@shop.example"
     assert approved.json()["approved_at"] is not None
 
     # --- draft reply ---------------------------------------------------
-    draft = client.post(f"/quotes/{quote_id}/draft-reply")
+    draft = client.post(f"/api/quotes/{quote_id}/draft-reply")
     assert draft.status_code == 200, draft.text
     reply = draft.json()
     assert reply["draft_created"] is False  # Graph not configured in tests
@@ -369,14 +369,14 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
     assert reply["to"] == ["buyer@bracken-eng.example"]
 
     # --- send and outcome ----------------------------------------------
-    sent = client.post(f"/quotes/{quote_id}/mark-sent").json()
+    sent = client.post(f"/api/quotes/{quote_id}/mark-sent").json()
     assert sent["status"] == QuoteStatus.SENT.value
     assert sent["sent_at"] is not None
     session.expire_all()
     assert session.get(Enquiry, enquiry.id).turnaround_seconds is not None
 
     outcome = client.post(
-        f"/quotes/{quote_id}/outcome",
+        f"/api/quotes/{quote_id}/outcome",
         json={"result": "won", "actual_production_mins": "240", "notes": "Ran long on the wire."},
     )
     assert outcome.status_code == 200, outcome.text
@@ -387,22 +387,22 @@ def test_full_pipeline_from_extraction_to_recorded_outcome(seeded):
 def test_a_sent_quote_is_frozen_and_revising_starts_a_new_version(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    quote = client.post(f"/enquiries/{enquiry.id}/price", json={}).json()
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    quote = client.post(f"/api/enquiries/{enquiry.id}/price", json={}).json()
     quote_id = quote["id"]
 
-    for flag in client.get(f"/quotes/{quote_id}/blockers").json():
-        client.post(f"/flags/{flag['id']}/resolve", json={})
-    client.post(f"/quotes/{quote_id}/approve", json={})
-    client.post(f"/quotes/{quote_id}/mark-sent")
+    for flag in client.get(f"/api/quotes/{quote_id}/blockers").json():
+        client.post(f"/api/flags/{flag['id']}/resolve", json={})
+    client.post(f"/api/quotes/{quote_id}/approve", json={})
+    client.post(f"/api/quotes/{quote_id}/mark-sent")
 
     session.expire_all()
     sent = session.get(type(session.get(Enquiry, enquiry.id).quotes[0]), quote_id)
     assert sent.frozen_snapshot is not None
     assert sent.frozen_snapshot["quote_value"] == quote["quote_value"]
 
-    revision = client.post(f"/quotes/{quote_id}/revise").json()
+    revision = client.post(f"/api/quotes/{quote_id}/revise").json()
     assert revision["version"] == 2
     assert revision["status"] == QuoteStatus.DRAFT.value
 
@@ -410,10 +410,10 @@ def test_a_sent_quote_is_frozen_and_revising_starts_a_new_version(seeded):
 def test_a_draft_reply_is_refused_before_approval(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    quote = client.post(f"/enquiries/{enquiry.id}/price", json={}).json()
-    refused = client.post(f"/quotes/{quote['id']}/draft-reply")
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    quote = client.post(f"/api/enquiries/{enquiry.id}/price", json={}).json()
+    refused = client.post(f"/api/quotes/{quote['id']}/draft-reply")
     assert refused.status_code == 409
     assert "approved" in refused.json()["detail"]
 
@@ -428,7 +428,7 @@ def test_a_low_confidence_field_is_withheld_not_priced(seeded):
             material={"value": "1.2344?", "confidence": 0.42, "evidence": "smudged"}
         )
     )
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
     assert part["material"] is None, "a low-confidence value must not reach the record"
     assert part["withheld_fields"]["material"] == "1.2344?"
     assert part["extraction_confidence"]["material"] == 0.42
@@ -445,7 +445,7 @@ def test_a_null_field_is_reported_as_unread_rather_than_guessed(seeded):
             tightest_tolerance={"value": None, "confidence": None, "evidence": "cropped view"}
         )
     )
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
     assert part["tightest_tolerance"] is None
     assert "tightest_tolerance" not in (part["withheld_fields"] or {})
     messages = [f["message"] for f in part["flags"] if f["field_name"] == "tightest_tolerance"]
@@ -459,7 +459,7 @@ def test_a_reported_conflict_becomes_a_flag_and_is_not_resolved(seeded):
             conflicts=[{"field": "quantity", "detail": "title block says 4, note says 6"}]
         )
     )
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
     conflict = next(f for f in part["flags"] if "Conflicting" in f["message"])
     assert conflict["severity"] == "block"
     assert "4" in conflict["message"] and "6" in conflict["message"]
@@ -472,14 +472,14 @@ def test_an_override_writes_a_correction_log_row_and_clears_the_flag(seeded):
             material={"value": "1.2344?", "confidence": 0.42, "evidence": "smudged"}
         )
     )
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
 
-    patched = client.patch(f"/parts/{part['id']}", json={"material": "1.2312"})
+    patched = client.patch(f"/api/parts/{part['id']}", json={"material": "1.2312"})
     assert patched.status_code == 200, patched.text
     assert patched.json()["material"] == "1.2312"
     assert (patched.json()["withheld_fields"] or {}) == {}
 
-    corrections = client.get(f"/parts/{part['id']}/corrections").json()
+    corrections = client.get(f"/api/parts/{part['id']}/corrections").json()
     assert len(corrections) == 1
     row = corrections[0]
     assert row["field_name"] == "material"
@@ -491,7 +491,7 @@ def test_an_override_writes_a_correction_log_row_and_clears_the_flag(seeded):
 
     remaining = [
         f
-        for f in client.get(f"/enquiries/{enquiry.id}").json()["enquiry"]["parts"][0]["flags"]
+        for f in client.get(f"/api/enquiries/{enquiry.id}").json()["enquiry"]["parts"][0]["flags"]
         if f["field_name"] == "material" and not f["resolved"]
     ]
     assert not remaining
@@ -500,18 +500,18 @@ def test_an_override_writes_a_correction_log_row_and_clears_the_flag(seeded):
 def test_an_unchanged_field_does_not_write_a_correction(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.append(_extraction_payload())
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
-    client.patch(f"/parts/{part['id']}", json={"material": "1.2312"})
-    assert client.get(f"/parts/{part['id']}/corrections").json() == []
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    client.patch(f"/api/parts/{part['id']}", json={"material": "1.2312"})
+    assert client.get(f"/api/parts/{part['id']}/corrections").json() == []
 
 
 def test_a_confidently_wrong_correction_is_distinguishable_in_reporting(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.append(_extraction_payload())  # material at 0.96, accepted
-    part = client.post(f"/enquiries/{enquiry.id}/extract").json()["parts"][0]
-    client.patch(f"/parts/{part['id']}", json={"material": "1.2367"})
+    part = client.post(f"/api/enquiries/{enquiry.id}/extract").json()["parts"][0]
+    client.patch(f"/api/parts/{part['id']}", json={"material": "1.2367"})
 
-    report = client.get("/reports/extraction-accuracy").json()
+    report = client.get("/api/reports/extraction-accuracy").json()
     material = report["per_field"]["material"]
     assert material["corrections"] == 1
     assert material["confidently_wrong"] == 1
@@ -524,11 +524,11 @@ def test_a_confidently_wrong_correction_is_distinguishable_in_reporting(seeded):
 def test_the_queue_surfaces_flags_value_and_confidence(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    client.post(f"/enquiries/{enquiry.id}/price", json={})
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    client.post(f"/api/enquiries/{enquiry.id}/price", json={})
 
-    queue = client.get("/queue").json()
+    queue = client.get("/api/queue").json()
     assert len(queue) == 1
     item = queue[0]
     assert item["enquiry_id"] == enquiry.id
@@ -561,7 +561,7 @@ def test_the_queue_can_sort_by_confidence_lowest_first(api):
             )
         )
     session.commit()
-    order = [i["lowest_confidence"] for i in client.get("/queue?sort=confidence").json()]
+    order = [i["lowest_confidence"] for i in client.get("/api/queue?sort=confidence").json()]
     assert order == [0.55, 0.80, 0.99]
 
 
@@ -570,8 +570,8 @@ def test_sent_enquiries_drop_out_of_the_queue_by_default(seeded):
     enquiry_row = session.get(Enquiry, enquiry.id)
     enquiry_row.status = EnquiryStatus.SENT.value
     session.commit()
-    assert client.get("/queue").json() == []
-    assert len(client.get("/queue?include_closed=true").json()) == 1
+    assert client.get("/api/queue").json() == []
+    assert len(client.get("/api/queue?include_closed=true").json()) == 1
 
 
 # --------------------------------------------------------------------------
@@ -580,11 +580,11 @@ def test_sent_enquiries_drop_out_of_the_queue_by_default(seeded):
 def test_a_rate_change_reprices_without_a_deployment(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    part = client.get(f"/enquiries/{enquiry.id}").json()["enquiry"]["parts"][0]
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    part = client.get(f"/api/enquiries/{enquiry.id}").json()["enquiry"]["parts"][0]
     client.put(
-        f"/parts/{part['id']}/operations",
+        f"/api/parts/{part['id']}/operations",
         json=[
             {
                 "op_number": 10,
@@ -595,18 +595,18 @@ def test_a_rate_change_reprices_without_a_deployment(seeded):
             }
         ],
     )
-    before = client.post(f"/enquiries/{enquiry.id}/price", json={}).json()
+    before = client.post(f"/api/enquiries/{enquiry.id}/price", json={}).json()
     assert before["labour_total"] == "55.00"
 
     client.post(
-        "/admin/rates",
+        "/api/admin/rates",
         json={
             "process": Process.CNC_MILL.value,
             "hourly_rate": "66.00",
             "effective_from": date.today().isoformat(),
         },
     )
-    after = client.post(f"/enquiries/{enquiry.id}/price", json={}).json()
+    after = client.post(f"/api/enquiries/{enquiry.id}/price", json={}).json()
     assert after["labour_total"] == "66.00"
 
 
@@ -629,9 +629,9 @@ def test_pricing_is_refused_when_a_rate_is_missing(seeded):
             ),
         ]
     )
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    refused = client.post(f"/enquiries/{enquiry.id}/price", json={})
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    refused = client.post(f"/api/enquiries/{enquiry.id}/price", json={})
     assert refused.status_code == 409
     assert "cnc_turn" in str(refused.json()["detail"])
     assert session.query(Flag).filter(Flag.dedupe_key == "missing_rate:cnc_turn").count() == 1
@@ -643,10 +643,10 @@ def test_pricing_is_refused_when_a_rate_is_missing(seeded):
 def test_the_addin_can_find_an_enquiry_by_its_outlook_message_id(seeded):
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
 
-    card = client.get("/enquiries/by-message/AAMk-api-0001")
+    card = client.get("/api/enquiries/by-message/AAMk-api-0001")
     assert card.status_code == 200, card.text
     body = card.json()
     assert body["enquiry_id"] == enquiry.id
@@ -658,12 +658,12 @@ def test_the_triage_card_and_the_queue_agree(seeded):
     """Both read the same builder; a drift between them would mislead triage."""
     client, session, stub, enquiry, *_ = seeded
     stub.responses.extend([_extraction_payload(), _classification_payload()])
-    client.post(f"/enquiries/{enquiry.id}/extract")
-    client.post(f"/enquiries/{enquiry.id}/classify")
-    client.post(f"/enquiries/{enquiry.id}/price", json={})
+    client.post(f"/api/enquiries/{enquiry.id}/extract")
+    client.post(f"/api/enquiries/{enquiry.id}/classify")
+    client.post(f"/api/enquiries/{enquiry.id}/price", json={})
 
-    card = client.get("/enquiries/by-message/AAMk-api-0001").json()
-    row = next(i for i in client.get("/queue").json() if i["enquiry_id"] == enquiry.id)
+    card = client.get("/api/enquiries/by-message/AAMk-api-0001").json()
+    row = next(i for i in client.get("/api/queue").json() if i["enquiry_id"] == enquiry.id)
     for field in (
         "status",
         "part_count",
@@ -680,7 +680,7 @@ def test_the_triage_card_and_the_queue_agree(seeded):
 
 def test_an_unknown_message_is_a_404_not_an_empty_card(seeded):
     client, *_ = seeded
-    assert client.get("/enquiries/by-message/not-a-real-message").status_code == 404
+    assert client.get("/api/enquiries/by-message/not-a-real-message").status_code == 404
 
 
 # --------------------------------------------------------------------------
@@ -704,7 +704,7 @@ def test_the_market_page_lists_every_series_with_its_age(api):
     )
     db.commit()
 
-    body = client.get("/admin/market").json()
+    body = client.get("/api/admin/market").json()
 
     assert len(body) == 1
     assert body[0]["series_key"] == "material:en16:round_bar"
@@ -719,7 +719,7 @@ def test_a_market_source_is_added_as_a_data_edit(api):
     from app.enums import MarketBasis, MarketKind, MarketUnit
 
     created = client.post(
-        "/admin/market/sources",
+        "/api/admin/market/sources",
         json={
             "series_key": "material:en30b:square_bar",
             "name": "Square bar supplier",
@@ -734,13 +734,13 @@ def test_a_market_source_is_added_as_a_data_edit(api):
     )
     assert created.status_code == 201
 
-    listed = client.get("/admin/market/sources").json()
+    listed = client.get("/api/admin/market/sources").json()
     assert [row["series_key"] for row in listed] == ["material:en30b:square_bar"]
 
 
 def test_refreshing_with_no_sources_configured_is_not_an_error(api):
     client, *_ = api
-    body = client.post("/admin/market/refresh").json()
+    body = client.post("/api/admin/market/refresh").json()
     assert body == {"results": [], "succeeded": 0, "failed": 0}
 
 
@@ -749,7 +749,7 @@ def test_refreshing_with_no_sources_configured_is_not_an_error(api):
 # --------------------------------------------------------------------------
 def test_health_reports_whether_the_mailbox_is_being_watched(api):
     client, *_ = api
-    body = client.get("/health").json()
+    body = client.get("/api/health").json()
     assert "mailbox_poll" in body
     # No Graph settings in tests, so nothing should be polling.
     assert body["mailbox_poll"] is False

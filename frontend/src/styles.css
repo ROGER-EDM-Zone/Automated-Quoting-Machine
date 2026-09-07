@@ -336,3 +336,46 @@ tr.market-stale, tr.market-last_refresh_failed { background: #fffaf0; }
 .lane-closed .lane-label { color: var(--muted); }
 .lane-coming_in .lane-count,
 .lane-to_check .lane-count { background: #eceff2; color: var(--muted); }
+
+/* --------------------------------------------------------------------------
+   Dragging emails in
+   --------------------------------------------------------------------------
+   The way into the system before a mailbox connection exists. It sits at the
+   top of the queue rather than behind a menu because for now it is how work
+   arrives, and a way in that has to be looked for is a way in nobody uses.
+   -------------------------------------------------------------------------- */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  margin-bottom: 20px;
+  transition: border-color .12s ease, background .12s ease;
+}
+.dropzone label {
+  display: block;
+  padding: 18px 22px;
+  cursor: pointer;
+  margin: 0;
+  text-transform: none;
+  font-weight: 400;
+  color: inherit;
+  font-size: inherit;
+}
+.dropzone strong { display: block; font-size: 15px; margin-bottom: 3px; }
+/* Direct child only — the "choose files" span inside this one must stay
+   inline, or it breaks onto its own line and orphans the full stop. */
+.dropzone label > span { display: block; font-size: 13px; color: var(--muted); }
+.dropzone:hover { border-color: var(--muted); }
+
+/* Mid-drag it has to be unmistakable that letting go will do something. */
+.dropzone.dragging {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--info-bg);
+}
+.dropzone.dragging strong { color: var(--accent); }
+
+.dropzone.busy { border-color: var(--accent); opacity: .7; cursor: progress; }
+.dropzone.busy label { cursor: progress; }
+
+.link-look { color: var(--accent); text-decoration: underline; }

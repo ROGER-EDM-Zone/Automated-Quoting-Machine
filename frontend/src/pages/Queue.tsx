@@ -28,6 +28,21 @@ const SORT_LABELS: Record<Sort, string> = {
   confidence: "Lowest confidence",
 };
 
+interface UploadResult {
+  ingested: {
+    filename: string;
+    enquiry_id: number;
+    subject: string | null;
+    created: boolean;
+    attachments: number;
+    drawings: number;
+    customer_matched: boolean;
+  }[];
+  failed: { filename: string; reason: string }[];
+  new_count: number;
+  already_known: number;
+}
+
 interface PollResult {
   checked: number;
   new_enquiries: number[];
@@ -59,6 +74,9 @@ export default function Queue() {
   const [checking, setChecking] = useState(false);
   const [pollNotice, setPollNotice] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -113,9 +131,94 @@ export default function Queue() {
     }
   };
 
+  /**
+   * Take emails dropped onto the queue.
+   *
+   * The same pipeline the mailbox uses, reached by a different door — which
+   * is what lets the shop use and judge the system before anybody has
+   * arranged a mailbox connection.
+   */
+  const acceptFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setError(null);
+    setUploadResult(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      for (const file of Array.from(files)) body.append("files", file);
+      setUploadResult(await api.upload<UploadResult>("/intake/upload", body));
+      setReloadKey((k) => k + 1);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+      setDragging(false);
+    }
+  };
+
   return (
     <>
       <ErrorBanner error={error} />
+
+      <div
+        className={`dropzone${dragging ? " dragging" : ""}${uploading ? " busy" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          void acceptFiles(e.dataTransfer.files);
+        }}
+      >
+        <label>
+          <strong>
+            {uploading ? "Reading…" : "Drag RFQ emails here from Outlook"}
+          </strong>
+          <span>
+            Drop <code>.msg</code> or <code>.eml</code> files, or{" "}
+            <span className="link-look">choose files</span>. Drawings come with
+            them. Several at once is fine.
+          </span>
+          <input
+            type="file"
+            multiple
+            accept=".msg,.eml,message/rfc822,application/vnd.ms-outlook"
+            onChange={(e) => void acceptFiles(e.target.files)}
+            hidden
+          />
+        </label>
+      </div>
+
+      {uploadResult && (
+        <Card title="Emails read">
+          <ul className="plain-list">
+            {uploadResult.ingested.map((item) => (
+              <li key={item.filename} className={item.created ? "refresh-ok" : ""}>
+                <strong>{item.subject ?? item.filename}</strong>
+                {item.created ? (
+                  <>
+                    {" "}
+                    — enquiry {item.enquiry_id}, {item.drawings} drawing
+                    {item.drawings === 1 ? "" : "s"}
+                    {!item.customer_matched && (
+                      <span className="subtle"> · customer not recognised</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="subtle"> — already in the queue</span>
+                )}
+              </li>
+            ))}
+            {uploadResult.failed.map((item) => (
+              <li key={item.filename} className="refresh-failed">
+                <strong>{item.filename}</strong> — {item.reason}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {pollNotice && <div className="notice">{pollNotice}</div>}
       <nav className="lane-tabs" aria-label="Working lists">
         {lanes.map((entry) => (
