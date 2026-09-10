@@ -21,26 +21,32 @@ what makes the number defensible later.
 
 ---
 
-## 1. Unresolved: is the standard rate £60 or £65?
+## 1. Settled: the standard rate is £65/hour
 
-**This needs deciding before it is built any further, and it is not mine to
-decide.**
+This document uses **£60/hour** throughout — *"the computer should not simply
+say machine hours × £60"*. The business supplied **£65/hour** on 7 September
+with the instruction to keep every process at that rate.
 
-- On 7 September, EDM Zone supplied the shop's real figures with the
-  instruction: *"keep all rates at £65/h"*. That is what `scripts/seed.py`
-  seeds and what the three trial quote sheets were priced at.
-- This document uses **£60/hour** throughout, in Paul's own words: *"The
-  computer should not simply say machine hours × £60"*, and *"£60/hour
-  baseline"*.
+Put to EDM Zone on 10 September, the answer was: **£65 stands. Paul's £60 is
+out of date.**
 
-They cannot both be the standard rate. The plausible readings are that £65 is
-current and £60 is older, that £60 is a cost rate and £65 a charge-out rate,
-or that the two figures belong to different processes.
+So nothing in the app changes. The seeded rate is £65 on every process, and
+the three trial quote sheets priced at £65 are unaffected.
 
-Nothing has been changed on the strength of this document. The seeded rate is
-still £65. What *has* changed is that the long-runner ladder is now built from
-whatever the standard rate is, rather than from a hard-coded £60 — so it
-reproduces Paul's table exactly at £60, and moves correctly if £65 stands.
+What this does change is how the long-runner ladder is built. It is derived
+from whatever the standard rate happens to be, in Paul's own £2.50 steps,
+rather than from a hard-coded £60:
+
+| | Rung 1 | Rung 2 | Rung 3 | Rung 4 | Standard |
+|---|---|---|---|---|---|
+| Paul's table, at £60 | £50.00 | £52.50 | £55.00 | £57.50 | £60.00 |
+| **In use, at £65** | **£55.00** | **£57.50** | **£60.00** | **£62.50** | **£65.00** |
+
+The reasoning is untouched — it is the *shape* of the concession that is
+Paul's, not the particular figures. Worth noting when the ladder is next
+discussed with him: the floor he described as competitive, £55, is now the
+first rung down rather than the middle one, so a job he would have taken at
+£55 sits one step further from the standard rate than it used to.
 
 ---
 
