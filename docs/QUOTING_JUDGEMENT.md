@@ -111,7 +111,7 @@ time, and a checklist that asks them afterwards is only recording regret.
 | 7 | Time calculation | Programming + setup + cutting + skims + handling + inspection + electrodes + contingency |
 | 8 | Commercial sense-check | One-off or production, handling per part, free-issue risk, specialist value, repeat potential, history, minimum order, *does this feel right?* |
 
-Seventeen questions are mandatory out of forty-six. Deliberately a minority:
+Seventeen questions are mandatory out of forty-nine. Deliberately a minority:
 make everything compulsory and people tick blindly. An explicit **N/A counts
 as answered** — the mechanism is making somebody say it out loud, not letting
 them skip past.
